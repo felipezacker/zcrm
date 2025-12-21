@@ -43,7 +43,7 @@ export const InboxPage: React.FC = () => {
   } = useInboxController();
 
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4">
+    <div className="max-w-6xl mx-auto py-8 px-6">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
