@@ -173,7 +173,13 @@ export const AIConfigSection: React.FC = () => {
         setIsValidating(true);
         setValidationError(null);
 
-        const result = await validateApiKey(aiProvider, localApiKey, aiModel);
+        // If user is typing a custom model ID, validate against the draft (even before persisting it).
+        const modelForValidation =
+            modelSelectValue === 'custom' && customModelDraft.trim()
+                ? customModelDraft.trim()
+                : aiModel;
+
+        const result = await validateApiKey(aiProvider, localApiKey, modelForValidation);
 
         setIsValidating(false);
 
@@ -213,6 +219,26 @@ export const AIConfigSection: React.FC = () => {
     // - Anthropic (model comparison / pricing): https://platform.claude.com/docs/en/about-claude/models
     // Observação: alguns provedores têm preço em faixas (ex.: Gemini por tamanho de contexto) e/ou “cached input” (OpenAI).
     const currentProvider = AI_PROVIDERS.find(p => p.id === aiProvider);
+    const isCatalogModel = !!currentProvider?.models.some(m => m.id === aiModel);
+    const modelSelectValue = isCatalogModel ? aiModel : 'custom';
+
+    // UX: for "Outro (Digitar ID)" we keep a local draft and only persist on explicit save.
+    // This avoids POST /api/settings/ai failing (aiModel has z.string().min(1)).
+    const [customModelDraft, setCustomModelDraft] = useState('');
+    const [customModelDirty, setCustomModelDirty] = useState(false);
+    const [isSavingModel, setIsSavingModel] = useState(false);
+
+    useEffect(() => {
+        // Sync draft when entering custom mode or when a saved custom model is loaded.
+        if (modelSelectValue !== 'custom') {
+            setCustomModelDraft('');
+            setCustomModelDirty(false);
+            return;
+        }
+        if (!customModelDirty) {
+            setCustomModelDraft(aiModel);
+        }
+    }, [modelSelectValue, aiModel, customModelDirty]);
 
     const handleProviderChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newProviderId = e.target.value as 'google' | 'openai' | 'anthropic';
@@ -276,12 +302,21 @@ export const AIConfigSection: React.FC = () => {
                         <div className="relative">
                             <select
                                 id="ai-model-select"
-                                value={AI_PROVIDERS.some(p => p.models.some(m => m.id === aiModel)) ? aiModel : 'custom'}
-                                onChange={(e) => {
-                                    if (e.target.value === 'custom') {
-                                        setAiModel('');
-                                    } else {
-                                        setAiModel(e.target.value);
+                                value={modelSelectValue}
+                                onChange={async (e) => {
+                                    const next = e.target.value;
+                                    if (next === 'custom') {
+                                        // Do NOT persist empty model. Show input and let user save explicitly.
+                                        setCustomModelDraft(!isCatalogModel ? aiModel : '');
+                                        setCustomModelDirty(false);
+                                        return;
+                                    }
+                                    try {
+                                        await setAiModel(next);
+                                        setCustomModelDraft('');
+                                        setCustomModelDirty(false);
+                                    } catch (err) {
+                                        showToast(err instanceof Error ? err.message : 'Falha ao atualizar modelo', 'error');
                                     }
                                 }}
                                 className="w-full appearance-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
@@ -298,18 +333,63 @@ export const AIConfigSection: React.FC = () => {
                             </div>
                         </div>
 
-                        {(!currentProvider?.models.some(m => m.id === aiModel) || aiModel === '') && (
+                        {modelSelectValue === 'custom' && (
                             <div className="mt-2 animate-in fade-in slide-in-from-top-2">
                                 <input
                                     type="text"
-                                    value={aiModel}
-                                    onChange={(e) => setAiModel(e.target.value)}
+                                    value={customModelDraft}
+                                    onChange={(e) => {
+                                        setCustomModelDraft(e.target.value);
+                                        setCustomModelDirty(true);
+                                    }}
                                     placeholder="Digite o ID do modelo (ex: gemini-1.5-pro-latest)"
                                     className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
                                 />
                                 <p className="text-xs text-slate-500 mt-1">
                                     Consulte a documentação do provedor para obter o ID correto.
                                 </p>
+
+                                <div className="mt-2 flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            const trimmed = customModelDraft.trim();
+                                            if (!trimmed) {
+                                                showToast('Digite o ID do modelo', 'error');
+                                                return;
+                                            }
+                                            setIsSavingModel(true);
+                                            try {
+                                                await setAiModel(trimmed);
+                                                setCustomModelDirty(false);
+                                                showToast('Modelo salvo!', 'success');
+                                            } catch (err) {
+                                                showToast(err instanceof Error ? err.message : 'Falha ao salvar modelo', 'error');
+                                            } finally {
+                                                setIsSavingModel(false);
+                                            }
+                                        }}
+                                        disabled={isSavingModel || !customModelDraft.trim()}
+                                        className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${isSavingModel || !customModelDraft.trim()
+                                            ? 'bg-slate-200 dark:bg-white/10 text-slate-400 cursor-not-allowed'
+                                            : 'bg-purple-600 hover:bg-purple-700 text-white shadow-sm'
+                                            }`}
+                                    >
+                                        {isSavingModel ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                        Salvar modelo
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setCustomModelDraft(aiModel);
+                                            setCustomModelDirty(false);
+                                        }}
+                                        className="px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-colors"
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
