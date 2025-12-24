@@ -28,6 +28,28 @@ import { useAuth } from '@/context/AuthContext';
 // Performance: reuse Intl formatter instances (avoid per-render allocations).
 const PT_BR_TIME_FORMATTER = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
+function normalizeTitleKey(value: string) {
+  // UX: normalize titles for robust matching (trim/collapse whitespace/remove quotes).
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[“”"]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function tryExtractContactNameFromText(text?: string) {
+  if (!text) return '';
+
+  // Common patterns in the app (pt-BR):
+  // - "Ligar para o cliente Amanda Ribeiro"
+  // - "Reativar cliente: Amanda Ribeiro"
+  const match =
+    text.match(/cliente:\s*([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)/i)
+    || text.match(/cliente\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)/i);
+
+  return match?.[1] ?? '';
+}
+
 interface InboxFocusViewProps {
   currentItem: FocusItem | null;
   currentIndex: number;
@@ -71,7 +93,7 @@ export const InboxFocusView: React.FC<InboxFocusViewProps> = ({
   const dealsByTitleKey = useMemo(() => {
     const map = new Map<string, DealView[]>();
     for (const d of deals) {
-      const key = (d.title ?? '').trim().toLowerCase();
+      const key = normalizeTitleKey(d.title ?? '');
       if (!key) continue;
       const list = map.get(key);
       if (list) list.push(d);
@@ -115,7 +137,7 @@ export const InboxFocusView: React.FC<InboxFocusViewProps> = ({
       // Fallback: muitas telas exibem apenas `dealTitle` mesmo quando `dealId` está vazio.
       // Tentamos resolver o deal por título para permitir abrir o painel de contexto.
       if (!dealId && act.dealTitle) {
-        const key = act.dealTitle.trim().toLowerCase();
+        const key = normalizeTitleKey(act.dealTitle);
         const matches = dealsByTitleKey.get(key);
         if (matches && matches.length > 0) {
           dealId = matches[0].id;
@@ -123,14 +145,15 @@ export const InboxFocusView: React.FC<InboxFocusViewProps> = ({
       }
 
       // Tenta extrair nome do contato da descrição (ex: "O cliente Amanda Ribeiro não compra...")
-      const descMatch = act.description?.match(/cliente\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)/i);
-      if (descMatch) {
-        extractedContactName = descMatch[1];
-      }
-      // Também tenta no título (ex: "Análise de Carteira: Risco de Churn" - pode ter nome)
-      const titleMatch = act.title?.match(/para\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)/i);
-      if (titleMatch) {
-        extractedContactName = titleMatch[1];
+      extractedContactName =
+        tryExtractContactNameFromText(act.description)
+        || tryExtractContactNameFromText(act.title)
+        || '';
+
+      // Também tenta no título (ex: "... para Amanda Ribeiro")
+      if (!extractedContactName) {
+        const titleMatch = act.title?.match(/para\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)/i);
+        if (titleMatch) extractedContactName = titleMatch[1];
       }
     } else {
       const sugg = currentItem.data as AISuggestion;
