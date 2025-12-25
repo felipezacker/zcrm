@@ -4,11 +4,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import ConfirmModal from '@/components/ConfirmModal';
 import { LossReasonModal } from '@/components/ui/LossReasonModal';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useMoveDealSimple } from '@/lib/query/hooks';
 import { FocusTrap, useFocusReturn } from '@/lib/a11y';
 import { Activity } from '@/types';
-import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import {
   analyzeLead,
   generateEmailDraft,
@@ -27,9 +25,6 @@ import {
   ThumbsDown,
   Building2,
   User,
-  FileText,
-  Mic,
-  StopCircle,
   Package,
   Sword,
   CheckCircle2,
@@ -103,20 +98,7 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
   const [emailDraft, setEmailDraft] = useState<string | null>(null);
   const [newNote, setNewNote] = useState('');
   const [activeTab, setActiveTab] = useState<'timeline' | 'products' | 'info'>('timeline');
-  const [isNoteTemplatesOpen, setIsNoteTemplatesOpen] = useState(false);
   const noteTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  const NOTE_TEMPLATES: Array<{ label: string; value: string }> = [
-    { label: 'Resumo', value: 'Resumo:\n- ' },
-    { label: 'Próxima ação', value: 'Próxima ação:\n- ' },
-    { label: 'Perguntas', value: 'Perguntas:\n- ' },
-    { label: 'Decisões', value: 'Decisões:\n- ' },
-    { label: 'Riscos', value: 'Riscos:\n- ' },
-  ];
-
-  // Ditado por voz (Web Speech API) - client-side (sem backend)
-  const speech = useSpeechRecognition();
-  const voicePrefixRef = useRef<string>('');
 
   const [objection, setObjection] = useState('');
   const [objectionResponses, setObjectionResponses] = useState<string[]>([]);
@@ -147,29 +129,8 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
       setShowLossReasonModal(false);
       setPendingLostStageId(null);
       setLossReasonOrigin('button');
-      speech.resetTranscript();
-      voicePrefixRef.current = '';
     }
   }, [isOpen, dealId]); // Depend on dealId to reset when switching deals
-
-  // Mantém o textarea sincronizado com o ditado (sem sobrescrever um prefixo que o usuário já tinha)
-  useEffect(() => {
-    if (!speech.isListening) return;
-    setNewNote(`${voicePrefixRef.current}${speech.transcript}`);
-  }, [speech.isListening, speech.transcript]);
-
-  // Segurança/UX: não deixar o microfone “ligado” se o modal fechar ou se o usuário sair da aba Timeline.
-  useEffect(() => {
-    if (!isOpen && speech.isListening) {
-      speech.stopListening();
-    }
-  }, [isOpen, speech.isListening]);
-
-  useEffect(() => {
-    if (activeTab !== 'timeline' && speech.isListening) {
-      speech.stopListening();
-    }
-  }, [activeTab, speech.isListening]);
 
   // Pre-compute stage label once for tool prompts (avoid repeated stage lookup).
   const stageLabel = useMemo(() => {
@@ -221,32 +182,6 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
     }
   };
 
-  const startRecording = () => {
-    if (!speech.hasRecognitionSupport) {
-      addToast('Seu navegador não suporta ditado por voz.', 'warning');
-      return;
-    }
-
-    // Mantém o que já estava no textarea como prefixo (caso o usuário misture digitação + voz)
-    voicePrefixRef.current = newNote.trim() ? `${newNote.trim()}\n` : '';
-    speech.resetTranscript();
-    speech.startListening();
-
-    // UX: se o navegador bloquear permissão/erro, o hook pode falhar e `isListening` não liga.
-    // Mostramos feedback rápido para evitar sensação de "ícone não funciona".
-    window.setTimeout(() => {
-      if (!speech.isListening) {
-        addToast('Não consegui iniciar o ditado. Verifique permissão do microfone no navegador.', 'warning');
-      }
-    }, 600);
-  };
-
-  const stopRecording = () => {
-    speech.stopListening();
-    if (!newNote.trim()) {
-      addToast('Não consegui captar fala. Tente novamente.', 'warning');
-    }
-  };
 
   const handleObjection = async () => {
     if (!objection.trim()) return;
@@ -268,9 +203,6 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
   const handleAddNote = () => {
     if (!newNote.trim()) return;
 
-    // Se estiver ditando, para antes de enviar para evitar que o textarea continue sendo atualizado.
-    speech.stopListening();
-
     const noteActivity: Activity = {
       id: crypto.randomUUID(),
       dealId: deal.id,
@@ -285,8 +217,6 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
 
     addActivity(noteActivity);
     setNewNote('');
-    speech.resetTranscript();
-    voicePrefixRef.current = '';
   };
 
   const handleAddProduct = () => {
@@ -704,72 +634,7 @@ export const DealDetailModal: React.FC<DealDetailModalProps> = ({ dealId, isOpen
                         onChange={e => setNewNote(e.target.value)}
                       ></textarea>
                       <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-white/5">
-                        <div className="flex gap-2 text-slate-400">
-                          <Popover open={isNoteTemplatesOpen} onOpenChange={setIsNoteTemplatesOpen}>
-                            <PopoverTrigger asChild>
-                              <button
-                                type="button"
-                                className="p-1 hover:text-primary-500 transition-colors"
-                                title="Inserir modelo de nota"
-                                aria-label="Inserir modelo de nota"
-                              >
-                                <FileText size={16} />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent align="start" className="w-56 p-2">
-                              <div className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                Modelos de nota
-                              </div>
-                              <div className="flex flex-col">
-                                {NOTE_TEMPLATES.map((t) => (
-                                  <button
-                                    key={t.label}
-                                    type="button"
-                                    className="w-full text-left rounded-md px-2.5 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/5"
-                                    onClick={() => {
-                                      setNewNote((prev) => {
-                                        const base = prev.trim();
-                                        return base ? `${base}\n\n${t.value}` : t.value;
-                                      });
-                                      setIsNoteTemplatesOpen(false);
-                                      requestAnimationFrame(() => noteTextareaRef.current?.focus());
-                                    }}
-                                  >
-                                    {t.label}
-                                  </button>
-                                ))}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                          <button
-                            type="button"
-                            onClick={speech.isListening ? stopRecording : startRecording}
-                            className={`p-1 transition-all ${speech.isListening ? 'text-red-500 animate-pulse' : 'hover:text-primary-500'}`}
-                            title="Ditado por voz (transcrição no navegador)"
-                            aria-pressed={speech.isListening}
-                          >
-                            {speech.isListening ? (
-                              <StopCircle size={16} />
-                            ) : (
-                              <Mic size={16} />
-                            )}
-                          </button>
-
-                          {speech.isListening && (
-                            <div
-                              className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400 select-none"
-                              aria-live="polite"
-                            >
-                              <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-60" />
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-                              </span>
-                              <span>
-                                Ouvindo… <span className="text-slate-500 dark:text-slate-300">(clique para parar)</span>
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                        <div />
                         <button
                           onClick={handleAddNote}
                           disabled={!newNote.trim()}
