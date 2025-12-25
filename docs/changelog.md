@@ -22,6 +22,7 @@
   - UX (Boards): modal do Wizard agora tem **hard cap por viewport** (`max-w: calc(100vw - padding)` / `max-h: calc(100dvh - padding)`) para evitar overflow em telas pequenas.
   - UX (Boards): Wizard “Criar Novo Board” ganhou tela inicial **Jobs-style** (3 escolhas grandes: do zero / playbook recomendado / template individual) e só depois mostra as listas, reduzindo fricção e “poluição” visual.
   - UX (Boards): tela inicial do Wizard foi **compactada** (formato “chooser”) e agora dá **destaque ao Criar com IA** como CTA primário.
+  - UX (Modais): criado um conjunto de **tokens de modal** (`components/ui/modalStyles.ts`) e o `components/ui/Modal.tsx` passou a usá-los; modais de Boards foram alinhados para manter consistência (overlay, padding, radius, viewport cap e foco).
 
 ## 24/12/2025
 

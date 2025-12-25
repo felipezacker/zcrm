@@ -12,6 +12,15 @@ import React, { useId, useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { FocusTrap, useFocusReturn } from '@/lib/a11y';
+import {
+  MODAL_BODY_CLASS,
+  MODAL_CLOSE_BUTTON_CLASS,
+  MODAL_HEADER_CLASS,
+  MODAL_OVERLAY_CLASS,
+  MODAL_PANEL_BASE_CLASS,
+  MODAL_TITLE_CLASS,
+  MODAL_VIEWPORT_CAP_CLASS,
+} from './modalStyles';
 
 interface ModalProps {
   isOpen: boolean;
@@ -29,6 +38,11 @@ interface ModalProps {
   describedById?: string;
   /** Initial element to focus (CSS selector or false to disable) */
   initialFocus?: string | false;
+  /**
+   * When embedding another modal inside (nested modal), you may want to disable
+   * the focus trap temporarily to avoid trapping focus behind the nested dialog.
+   */
+  focusTrapEnabled?: boolean;
 }
 
 const sizeClasses = {
@@ -49,6 +63,7 @@ export const Modal: React.FC<ModalProps> = ({
   labelledById,
   describedById,
   initialFocus,
+  focusTrapEnabled = true,
 }) => {
   // Generate unique ID for title if not provided
   const generatedId = useId();
@@ -71,53 +86,55 @@ export const Modal: React.FC<ModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <FocusTrap 
-      active={isOpen} 
+  const content = (
+    <div
+      className={MODAL_OVERLAY_CLASS}
+      onClick={handleBackdropClick}
+      aria-hidden="false"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={describedById}
+        className={cn(
+          MODAL_PANEL_BASE_CLASS,
+          MODAL_VIEWPORT_CAP_CLASS,
+          'animate-in zoom-in-95 duration-200',
+          sizeClasses[size],
+          className
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={MODAL_HEADER_CLASS}>
+          <h2 id={titleId} className={MODAL_TITLE_CLASS}>
+            {title}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar modal"
+            className={MODAL_CLOSE_BUTTON_CLASS}
+          >
+            <X size={20} className="text-slate-500" aria-hidden="true" />
+          </button>
+        </div>
+        <div className={cn(MODAL_BODY_CLASS, bodyClassName)}>{children}</div>
+      </div>
+    </div>
+  );
+
+  return focusTrapEnabled ? (
+    <FocusTrap
+      active={isOpen}
       onEscape={handleEscape}
       initialFocus={initialFocus}
       returnFocus={true}
     >
-      <div 
-        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
-        onClick={handleBackdropClick}
-        aria-hidden="false"
-      >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={titleId}
-          aria-describedby={describedById}
-          className={cn(
-            'bg-white dark:bg-dark-card',
-            'border border-slate-200 dark:border-white/10',
-            'rounded-2xl shadow-2xl w-full flex flex-col',
-            'animate-in zoom-in-95 duration-200',
-            sizeClasses[size],
-            className
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="p-5 border-b border-slate-200 dark:border-white/10 flex justify-between items-center shrink-0">
-            <h2 
-              id={titleId}
-              className="text-lg font-bold text-slate-900 dark:text-white font-display"
-            >
-              {title}
-            </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Fechar modal"
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors focus-visible-ring rounded-lg p-1"
-            >
-              <X size={20} aria-hidden="true" />
-            </button>
-          </div>
-          <div className={cn('p-5', bodyClassName)}>{children}</div>
-        </div>
-      </div>
+      {content}
     </FocusTrap>
+  ) : (
+    content
   );
 };
 

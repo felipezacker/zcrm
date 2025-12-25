@@ -13,6 +13,7 @@ import { AIProcessingModal, ProcessingStep, SimulatorPhase } from './Modals/AIPr
 import { fetchRegistry, fetchTemplateJourney } from '@/services/registryService';
 import { RegistryIndex, RegistryTemplate, JourneyDefinition } from '@/types';
 import { OFFICIAL_JOURNEYS } from '@/journey-templates';
+import { MODAL_OVERLAY_CLASS } from '@/components/ui/modalStyles';
 
 interface BoardCreationWizardProps {
   isOpen: boolean;
@@ -677,18 +678,19 @@ export const BoardCreationWizard: React.FC<BoardCreationWizardProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-2 sm:p-4">
+    <div className={MODAL_OVERLAY_CLASS}>
       <AIProcessingModal
         isOpen={isProcessingModalOpen}
         currentStep={processingStep}
         phase={processingPhase}
       />
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      {/* Click-outside closes */}
+      <div className="absolute inset-0" onClick={onClose} />
 
       <div
         // NOTE: we hard-cap width/height by viewport to avoid overflow on small screens.
         // `dvh` handles mobile browser chrome better than `vh`.
-        className={`relative z-10 w-full h-full sm:h-auto max-w-[calc(100vw-1rem)] ${isChatMode ? 'lg:max-w-6xl' : 'lg:max-w-5xl'} ${isSelectHome ? 'sm:max-w-xl lg:max-w-xl' : ''} bg-white dark:bg-dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] transition-all duration-300`}
+        className={`relative z-10 w-full h-full sm:h-auto ${isChatMode ? 'lg:max-w-6xl' : 'lg:max-w-5xl'} ${isSelectHome ? 'sm:max-w-xl lg:max-w-xl' : ''} bg-white dark:bg-dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] transition-all duration-300`}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-3 sm:p-4 border-b border-slate-200 dark:border-white/10 shrink-0">
