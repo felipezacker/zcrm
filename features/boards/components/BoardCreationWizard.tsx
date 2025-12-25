@@ -672,6 +672,8 @@ export const BoardCreationWizard: React.FC<BoardCreationWizardProps> = ({
   // Determine which board to display
   const displayBoard = previewBoard || generatedBoard;
 
+  const isSelectHome = step === 'select' && selectMode === 'home' && !isChatMode;
+
   if (!isOpen) return null;
 
   return (
@@ -686,11 +688,11 @@ export const BoardCreationWizard: React.FC<BoardCreationWizardProps> = ({
       <div
         // NOTE: we hard-cap width/height by viewport to avoid overflow on small screens.
         // `dvh` handles mobile browser chrome better than `vh`.
-        className={`relative z-10 w-full h-full sm:h-auto max-w-[calc(100vw-1rem)] ${isChatMode ? 'lg:max-w-6xl' : 'lg:max-w-5xl'} bg-white dark:bg-dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] transition-all duration-300`}
+        className={`relative z-10 w-full h-full sm:h-auto max-w-[calc(100vw-1rem)] ${isChatMode ? 'lg:max-w-6xl' : 'lg:max-w-5xl'} ${isSelectHome ? 'sm:max-w-xl lg:max-w-xl' : ''} bg-white dark:bg-dark-card rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] transition-all duration-300`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 dark:border-white/10 shrink-0">
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-slate-200 dark:border-white/10 shrink-0">
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             {isChatMode ? (
               <>
                 <MessageSquare size={24} className="text-primary-500" /> Refinar com IA
@@ -798,58 +800,60 @@ export const BoardCreationWizard: React.FC<BoardCreationWizardProps> = ({
 
           {/* Main Content / Preview Section */}
           <div
-            className={`flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 ${isChatMode ? 'bg-slate-100 dark:bg-black/20' : ''}`}
+            className={`flex-1 overflow-y-auto custom-scrollbar ${isSelectHome ? 'p-4 sm:p-4' : 'p-4 sm:p-6'} ${isChatMode ? 'bg-slate-100 dark:bg-black/20' : ''}`}
           >
             {step === 'select' && (
               <div className="space-y-6">
                 {selectMode === 'home' ? (
-                  <div className="max-w-4xl mx-auto">
-                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white text-center">
+                  <div className="mx-auto w-full">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white text-center">
                       Como você quer começar?
                     </h3>
-                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 text-center">
-                      Escolha um caminho simples. A gente mostra os detalhes só depois.
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 text-center">
+                      Escolha um caminho. O resto aparece depois.
                     </p>
 
-                    <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <button
-                        onClick={() => {
-                          onClose();
-                          onOpenCustomModal();
-                          handleReset();
-                        }}
-                        className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card hover:border-primary-500/50 dark:hover:border-primary-500/50 hover:shadow-md transition-all text-left"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
-                            <Plus className="w-5 h-5 text-slate-700 dark:text-slate-200" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-bold text-slate-900 dark:text-white">Começar do zero</div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              Um board em branco, você decide tudo.
-                            </div>
-                          </div>
+                    {/* Primary CTA: AI */}
+                    <button
+                      onClick={() => setStep('ai-input')}
+                      className="mt-4 w-full relative overflow-hidden p-1 rounded-2xl group transition-all hover:shadow-lg hover:shadow-primary-500/20"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-95 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative bg-white dark:bg-slate-900 rounded-[14px] px-4 py-3 flex items-center justify-center gap-3 transition-colors group-hover:bg-opacity-90 dark:group-hover:bg-opacity-90">
+                        <Sparkles
+                          size={18}
+                          className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-pink-500"
+                        />
+                        <div className="flex flex-col items-center leading-tight">
+                          <span className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-pink-600 dark:from-indigo-400 dark:to-pink-400">
+                            Criar com IA
+                          </span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                            Em 1 frase, eu monto o board pra você.
+                          </span>
                         </div>
-                      </button>
+                      </div>
+                    </button>
 
+                    {/* Compact chooser list */}
+                    <div className="mt-3 space-y-2">
                       <button
                         onClick={() => {
                           setSelectMode('browse');
                           setSelectBrowseFocus('playbooks');
                           setActiveTab('official');
                         }}
-                        className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card hover:border-primary-500/50 dark:hover:border-primary-500/50 hover:shadow-md transition-all text-left"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card hover:border-primary-500/50 dark:hover:border-primary-500/50 transition-all text-left"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center">
-                            <LayoutTemplate className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                          <div className="w-9 h-9 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center">
+                            <LayoutTemplate className="w-4 h-4 text-primary-600 dark:text-primary-400" />
                           </div>
                           <div className="min-w-0">
-                            <div className="font-bold text-slate-900 dark:text-white">
+                            <div className="font-semibold text-slate-900 dark:text-white">
                               Usar um playbook (recomendado)
                             </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400">
                               Jornada completa pronta para usar.
                             </div>
                           </div>
@@ -862,37 +866,53 @@ export const BoardCreationWizard: React.FC<BoardCreationWizardProps> = ({
                           setSelectBrowseFocus('templates');
                           setActiveTab('official');
                         }}
-                        className="p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card hover:border-primary-500/50 dark:hover:border-primary-500/50 hover:shadow-md transition-all text-left"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card hover:border-primary-500/50 dark:hover:border-primary-500/50 transition-all text-left"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
-                            <Settings className="w-5 h-5 text-slate-700 dark:text-slate-200" />
+                          <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center">
+                            <Settings className="w-4 h-4 text-slate-700 dark:text-slate-200" />
                           </div>
                           <div className="min-w-0">
-                            <div className="font-bold text-slate-900 dark:text-white">Usar template individual</div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                            <div className="font-semibold text-slate-900 dark:text-white">
+                              Usar template individual
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400">
                               Um board pronto (Pré-venda, Vendas, CS…).
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          onClose();
+                          onOpenCustomModal();
+                          handleReset();
+                        }}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card hover:border-primary-500/50 dark:hover:border-primary-500/50 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center">
+                            <Plus className="w-4 h-4 text-slate-700 dark:text-slate-200" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-slate-900 dark:text-white">Começar do zero</div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                              Um board em branco.
                             </div>
                           </div>
                         </div>
                       </button>
                     </div>
 
-                    <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-                      <button
-                        onClick={() => setStep('ai-input')}
-                        className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-white/20 transition-colors font-semibold flex items-center gap-2"
-                      >
-                        <Sparkles size={16} className="text-primary-600 dark:text-primary-400" />
-                        Criar rápido com IA
-                      </button>
+                    <div className="mt-3 text-center">
                       <button
                         onClick={() => {
                           setSelectMode('browse');
                           setSelectBrowseFocus('community');
                           setActiveTab('community');
                         }}
-                        className="text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                        className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                       >
                         Ver templates da comunidade →
                       </button>
@@ -1331,9 +1351,7 @@ export const BoardCreationWizard: React.FC<BoardCreationWizardProps> = ({
         {/* Footer - Fixed Actions */}
         <div className="p-6 border-t border-slate-200 dark:border-white/10 bg-white dark:bg-dark-card shrink-0">
           {step === 'select' && (
-            <div className="text-center text-xs text-slate-400">
-              Escolha uma opção acima para começar.
-            </div>
+            <div className="text-center text-xs text-slate-400" />
           )}
 
           {step === 'playbook-preview' && selectedPlaybookId && (
