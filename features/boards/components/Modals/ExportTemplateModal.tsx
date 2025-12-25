@@ -88,7 +88,7 @@ function buildJourneyFromBoards(
 }
 
 type Mode = 'board' | 'journey';
-type Panel = 'export' | 'import' | 'publish';
+type Panel = 'export' | 'import';
 
 function guessCategoryFromBoards(boards: Board[]) {
   const text = boards.map(b => b.name).join(' ').toLowerCase();
@@ -165,7 +165,7 @@ export function ExportTemplateModal(props: {
   const { isOpen, onClose, boards, activeBoard, onCreateBoardAsync } = props;
   const { addToast } = useToast();
 
-  const [panel, setPanel] = useState<Panel>('publish');
+  const [panel, setPanel] = useState<Panel>('export');
   const [mode, setMode] = useState<Mode>('journey');
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -180,8 +180,8 @@ export function ExportTemplateModal(props: {
 
   useEffect(() => {
     if (!isOpen) return;
-    // Jobs-style: open in "Publicar" by default to reduce noise.
-    setPanel('publish');
+    // Reset to a predictable state on open.
+    setPanel('export');
     setMode('journey');
     setAdvancedOpen(false);
   }, [isOpen]);
@@ -477,33 +477,6 @@ export function ExportTemplateModal(props: {
     }
   };
 
-  const publishChecklistText = useMemo(() => {
-    const repoHint = 'crm-templates';
-    const folder = templatePath.trim() || 'sales/my-template';
-    return [
-      '### Publicar na comunidade (checklist)',
-      '',
-      `1) No repositório \`${repoHint}\`, crie a pasta \`${folder}\``,
-      `2) Salve o arquivo exportado como: \`${folder}/journey.json\``,
-      '3) No `registry.json`, adicione o snippet (um item na lista `templates`)',
-      '4) Commit + push',
-      '5) No CRM: Boards → Criar board → Community → instale o template',
-      '',
-      'Dica: aumente `version` quando fizer mudanças e mantenha `id/path` estáveis.',
-      '',
-    ].join('\n');
-  }, [templatePath]);
-
-  const handleCopyPublishChecklist = async () => {
-    try {
-      await navigator.clipboard.writeText(publishChecklistText);
-      addToast('Checklist de publicação copiado!', 'success');
-    } catch (err) {
-      console.error('[ExportTemplateModal] checklist copy failed:', err);
-      addToast('Não consegui copiar (permissão do navegador).', 'error');
-    }
-  };
-
   return (
     <Modal
       isOpen={isOpen}
@@ -535,259 +508,8 @@ export function ExportTemplateModal(props: {
           >
             Importar JSON
           </button>
-          <button
-            type="button"
-            onClick={() => setPanel('publish')}
-            className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${panel === 'publish'
-              ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white'
-              : 'bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10'
-              }`}
-          >
-            Publicar
-          </button>
         </div>
       </div>
-
-      {panel === 'publish' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-slate-50/50 dark:bg-white/5">
-              <div className="text-sm font-bold text-slate-900 dark:text-white">Passo 1 — Gere o `journey.json`</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Recomendado: publique como <b>Jornada</b> (mesmo se for 1 board).
-              </div>
-
-              <div className="mt-3 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMode('journey')}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${mode === 'journey'
-                    ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10'
-                    }`}
-                >
-                  Jornada
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode('board')}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${mode === 'board'
-                    ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-white dark:bg-white/5 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10'
-                    }`}
-                >
-                  Board
-                </button>
-              </div>
-
-              <div className="mt-3">
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Nome da jornada (título público)
-                </label>
-                <input
-                  value={mode === 'journey' ? journeyName : activeBoard.name}
-                  onChange={e => {
-                    setJourneyName(e.target.value);
-                    setJourneyNameDirty(true);
-                  }}
-                  disabled={mode !== 'journey'}
-                  className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm disabled:opacity-60"
-                />
-              </div>
-
-              {mode === 'journey' && (
-                <div className="mt-3">
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                    <b>Ordem exportada:</b> {selectedBoards.map(b => b.name).join(' → ') || '(nenhum)'}
-                  </div>
-                  <div className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-2 max-h-56 overflow-auto space-y-1">
-                    {boards.map(b => {
-                      const checked = selectedBoardIds.includes(b.id);
-                      const isSelected = checked;
-                      return (
-                        <div key={b.id} className="flex items-center justify-between gap-2 px-2 py-1 rounded-md hover:bg-slate-50 dark:hover:bg-white/10">
-                          <label className="flex items-center gap-2 text-sm text-slate-800 dark:text-slate-200 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleBoard(b.id)}
-                            />
-                            <span className="truncate">{b.name}</span>
-                          </label>
-                          {isSelected && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => moveSelected(b.id, -1)}
-                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/10"
-                                aria-label="Mover para cima"
-                              >
-                                <ArrowUp size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moveSelected(b.id, 1)}
-                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/10"
-                                aria-label="Mover para baixo"
-                              >
-                                <ArrowDown size={14} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleDownloadJourney}
-                  className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold flex items-center gap-2"
-                >
-                  <Download size={16} /> Baixar journey.json
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCopyJourneyJson}
-                  className="px-4 py-2 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-semibold flex items-center gap-2"
-                >
-                  <Copy size={16} /> Copiar journey.json
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setAdvancedOpen(v => !v)}
-                className="mt-3 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
-              >
-                {advancedOpen ? 'Ocultar avançado' : 'Mostrar avançado'}
-              </button>
-
-              {advancedOpen && (
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">schemaVersion</label>
-                    <input
-                      value={schemaVersion}
-                      onChange={e => setSchemaVersion(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">slug prefix (opcional)</label>
-                    <input
-                      value={slugPrefix}
-                      onChange={e => setSlugPrefix(e.target.value)}
-                      placeholder="ex: sales"
-                      className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-slate-50/50 dark:bg-white/5">
-              <div className="text-sm font-bold text-slate-900 dark:text-white">Passo 2 — Registre no `registry.json`</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Esses defaults são pensados pra comunidade. Edite só se precisar.
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">id</label>
-                  <input
-                    value={templateId}
-                    onChange={e => { setTemplateId(e.target.value); setTemplateMetaDirty(true); }}
-                    className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">path</label>
-                  <input
-                    value={templatePath}
-                    onChange={e => { setTemplatePath(e.target.value); setTemplateMetaDirty(true); }}
-                    className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">name</label>
-                  <input
-                    value={templateName}
-                    onChange={e => { setTemplateName(e.target.value); setTemplateMetaDirty(true); }}
-                    className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">description</label>
-                  <input
-                    value={templateDescription}
-                    onChange={e => { setTemplateDescription(e.target.value); setTemplateMetaDirty(true); }}
-                    className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">author</label>
-                  <input
-                    value={templateAuthor}
-                    onChange={e => { setTemplateAuthor(e.target.value); setTemplateMetaDirty(true); }}
-                    className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">version</label>
-                  <input
-                    value={templateVersion}
-                    onChange={e => { setTemplateVersion(e.target.value); setTemplateMetaDirty(true); }}
-                    className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">tags (separadas por vírgula)</label>
-                  <input
-                    value={templateTags}
-                    onChange={e => { setTemplateTags(e.target.value); setTemplateMetaDirty(true); }}
-                    className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleCopyRegistrySnippet}
-                  className="px-4 py-2 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-semibold flex items-center gap-2"
-                >
-                  <Copy size={16} /> Copiar snippet
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-slate-50/50 dark:bg-white/5">
-              <div className="text-sm font-bold text-slate-900 dark:text-white">Passo 3 — Checklist</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Cole no seu README/PR pra não esquecer nada.
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleCopyPublishChecklist}
-                  className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold flex items-center gap-2"
-                >
-                  <Copy size={16} /> Copiar checklist
-                </button>
-              </div>
-              <pre className="mt-3 text-xs whitespace-pre-wrap rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-black/30 p-3 max-h-40 overflow-auto">
-                {publishChecklistText}
-              </pre>
-            </div>
-          </div>
-        </div>
-      )}
 
       {panel === 'import' && (
         <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 bg-slate-50/50 dark:bg-white/5 space-y-4">
