@@ -87,7 +87,7 @@
 - **CRUD inicial de Prompts (por organização)**:
   - Migration `supabase/migrations/20251225000000_ai_prompts.sql` cria `ai_prompt_templates` com versionamento simples (1 ativo por `key`).
   - APIs `app/api/settings/ai-prompts` (listar overrides ativos + salvar nova versão) e `app/api/settings/ai-prompts/[key]` (listar versões + reset).
-  - UI `features/settings/components/AIPromptsManager.tsx` para editar override e resetar.
+  - UI para editar override e resetar (removida posteriormente; edição passou a ficar dentro de “Funções de IA”).
 - **Integração backend com prompts editáveis**:
   - Rotas `app/api/ai/tasks/*` e parte de `app/api/ai/actions` passaram a resolver prompt via catálogo + override (`lib/ai/prompts/*`), permitindo mudar comportamento sem deploy.
 
