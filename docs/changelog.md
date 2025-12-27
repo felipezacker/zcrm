@@ -6,6 +6,7 @@
   - Consolidado o schema do Supabase para **1 única migration** em `supabase/migrations/20251201000000_schema_init.sql`.
   - Detalhes técnicos: baseline inclui `organization_settings.ai_enabled`, `ai_prompt_templates`, `ai_feature_flags`, `boards.default_product_id`, contexto de empresa/participantes em `activities`, e Integrações/Webhooks (`pg_net`, tabelas `integration_*`/`webhook_*` e trigger em `deals`).
   - Adicionado guia de auditoria/padronização em `docs/migrations-baseline.md`.
+  - Fix: FKs dos logs de webhooks (`webhook_events_in/out`) agora usam `ON DELETE SET NULL` para não bloquear deleção de `deals/contacts` (evita `409 Conflict` no PostgREST).
 
 - **CRM (reaplicação de mudanças pendentes)**:
   - Reaplicadas e persistidas no código as melhorias de **Empresas (CRUD + UI padronizada)**, **Inbox (Seed + regra de churn)** e **Atividades (contexto empresa/participantes + ESC no modal)** que estavam visíveis no editor, mas não tinham sido materializadas em commit.
@@ -36,6 +37,11 @@
     - Melhoria: `webhook-in` agora aceita os campos do modal **Novo Negócio** (`deal_title`, `deal_value`, `company_name`, `contact_name`) e tenta criar/vincular empresa automaticamente.
     - Ajuste: para “cadastro” (form/n8n), o webhook agora **atualiza** o negócio em aberto do contato (evita duplicar em reenvios) e `external_event_id` ficou **opcional** (útil só para integrações orientadas a evento/retry).
     - UX: resposta do `webhook-in` agora inclui `message` e `action` (criado/atualizado) para ficar mais leigo-friendly.
+    - **Produto**: o antigo “guia/manual” foi convertido em **Quick Start** dentro do app (Destino → Conexão → Teste), com:
+      - seleção de funil/etapa no próprio fluxo;
+      - exibição/cópia de **URL + Secret**, exemplo de **cURL** e dicas por provedor (Hotmart/n8n/Make);
+      - botão **Enviar teste** e lista de **Últimos recebidos** (consulta em `webhook_events_in`) para prova de funcionamento.
+    - **Fix (CORS)**: `webhook-in` agora responde a **OPTIONS** e inclui headers CORS, permitindo executar o **“Enviar teste”** diretamente pelo browser sem erro “Failed to fetch”.
 - **Debug Mode (UX)**:
   - Debug agora é **reativo** (sem refresh): toggle dispara evento (`DEBUG_MODE_EVENT`) e `DebugFillButton` usa `useDebugMode`.
   - Fix: geração de telefone fake agora é determinística (sem `fromRegExp`, evitando `\\` no número).

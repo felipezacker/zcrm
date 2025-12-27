@@ -1674,8 +1674,9 @@ CREATE TABLE IF NOT EXISTS public.webhook_events_in (
   payload JSONB NOT NULL DEFAULT '{}'::jsonb,
   status TEXT NOT NULL DEFAULT 'received',
   error TEXT,
-  created_contact_id UUID REFERENCES public.contacts(id),
-  created_deal_id UUID REFERENCES public.deals(id),
+  -- manter auditoria mesmo se contato/deal forem removidos
+  created_contact_id UUID REFERENCES public.contacts(id) ON DELETE SET NULL,
+  created_deal_id UUID REFERENCES public.deals(id) ON DELETE SET NULL,
   received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -1692,9 +1693,10 @@ CREATE TABLE IF NOT EXISTS public.webhook_events_out (
   organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   event_type TEXT NOT NULL,
   payload JSONB NOT NULL DEFAULT '{}'::jsonb,
-  deal_id UUID REFERENCES public.deals(id),
-  from_stage_id UUID REFERENCES public.board_stages(id),
-  to_stage_id UUID REFERENCES public.board_stages(id),
+  -- manter auditoria mesmo se o deal/estágios forem removidos
+  deal_id UUID REFERENCES public.deals(id) ON DELETE SET NULL,
+  from_stage_id UUID REFERENCES public.board_stages(id) ON DELETE SET NULL,
+  to_stage_id UUID REFERENCES public.board_stages(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -1714,6 +1716,30 @@ CREATE TABLE IF NOT EXISTS public.webhook_deliveries (
 );
 
 ALTER TABLE public.webhook_deliveries ENABLE ROW LEVEL SECURITY;
+
+-- Upgrade-safe: ajustar FKs para não bloquear deleções (evita 409 em deletes via PostgREST)
+ALTER TABLE public.webhook_events_in
+  DROP CONSTRAINT IF EXISTS webhook_events_in_created_contact_id_fkey,
+  DROP CONSTRAINT IF EXISTS webhook_events_in_created_deal_id_fkey;
+
+ALTER TABLE public.webhook_events_in
+  ADD CONSTRAINT webhook_events_in_created_contact_id_fkey
+    FOREIGN KEY (created_contact_id) REFERENCES public.contacts(id) ON DELETE SET NULL,
+  ADD CONSTRAINT webhook_events_in_created_deal_id_fkey
+    FOREIGN KEY (created_deal_id) REFERENCES public.deals(id) ON DELETE SET NULL;
+
+ALTER TABLE public.webhook_events_out
+  DROP CONSTRAINT IF EXISTS webhook_events_out_deal_id_fkey,
+  DROP CONSTRAINT IF EXISTS webhook_events_out_from_stage_id_fkey,
+  DROP CONSTRAINT IF EXISTS webhook_events_out_to_stage_id_fkey;
+
+ALTER TABLE public.webhook_events_out
+  ADD CONSTRAINT webhook_events_out_deal_id_fkey
+    FOREIGN KEY (deal_id) REFERENCES public.deals(id) ON DELETE SET NULL,
+  ADD CONSTRAINT webhook_events_out_from_stage_id_fkey
+    FOREIGN KEY (from_stage_id) REFERENCES public.board_stages(id) ON DELETE SET NULL,
+  ADD CONSTRAINT webhook_events_out_to_stage_id_fkey
+    FOREIGN KEY (to_stage_id) REFERENCES public.board_stages(id) ON DELETE SET NULL;
 
 -- Policies (admin-only)
 DROP POLICY IF EXISTS "Admins can manage inbound sources" ON public.integration_inbound_sources;

@@ -55,10 +55,21 @@ type LeadPayload = {
   company?: string;
 };
 
+const corsHeaders = {
+  // NOTE: Para chamadas a partir do browser (UI "Enviar teste") precisamos de CORS.
+  // Edge Functions do Supabase são cross-origin em relação ao app, então o navegador
+  // faz um preflight (OPTIONS), especialmente com JSON/headers custom.
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, X-Webhook-Secret, Authorization",
+  // Ajuda no debug/observabilidade
+  "Access-Control-Max-Age": "86400",
+};
+
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 }
 
@@ -144,6 +155,10 @@ function getDealValue(payload: LeadPayload) {
 }
 
 Deno.serve(async (req) => {
+  // CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
   if (req.method !== "POST") return json(405, { error: "Método não permitido" });
 
   const sourceId = getSourceIdFromPath(req);

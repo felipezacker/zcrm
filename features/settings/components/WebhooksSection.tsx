@@ -7,6 +7,7 @@ import { useBoards } from '@/context/boards/BoardsContext';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import { cn } from '@/utils/cn';
 
 type InboundSourceRow = {
   id: string;
@@ -23,6 +24,15 @@ type OutboundEndpointRow = {
   url: string;
   secret: string;
   active: boolean;
+};
+
+type InboundEventRow = {
+  id: string;
+  received_at: string;
+  status: string;
+  external_event_id: string | null;
+  error: string | null;
+  created_deal_id: string | null;
 };
 
 function generateSecret() {
@@ -45,6 +55,7 @@ function buildCurlExample(url: string, secret: string) {
   return `curl -X POST '${url}' \\
   -H 'Content-Type: application/json' \\
   -H 'X-Webhook-Secret: ${secret}' \\
+  -H 'Authorization: Bearer ${secret}' \\
   -d '{
     "deal_title": "Contrato Anual - Acme",
     "deal_value": 12000,
@@ -69,10 +80,6 @@ export const WebhooksSection: React.FC = () => {
   const [endpoint, setEndpoint] = useState<OutboundEndpointRow | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Wizard/Edit inbound (1 passo)
-  const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [wizardMode, setWizardMode] = useState<'create' | 'edit'>('create');
-  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
   const defaultBoard = useMemo(() => boards.find(b => b.isDefault) || boards[0] || null, [boards]);
   const [selectedBoardId, setSelectedBoardId] = useState<string>('');
   const selectedBoard = useMemo(
@@ -82,20 +89,19 @@ export const WebhooksSection: React.FC = () => {
   const [selectedStageId, setSelectedStageId] = useState<string>('');
   const stages = selectedBoard?.stages || [];
 
-  const [createTestLead, setCreateTestLead] = useState(false);
-
-  // Final screen
-  const [isDoneOpen, setIsDoneOpen] = useState(false);
-  const [createdUrl, setCreatedUrl] = useState('');
-  const [createdSecret, setCreatedSecret] = useState('');
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-
   // Follow-up modal
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
   const [followUpUrl, setFollowUpUrl] = useState('');
 
-  // Help / documentation (in-product)
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  // Quick start (produto) — inbound/outbound
+  const [isQuickStartOpen, setIsQuickStartOpen] = useState(false);
+  const [quickStartTab, setQuickStartTab] = useState<'inbound' | 'outbound'>('inbound');
+  const [inboundStep, setInboundStep] = useState<1 | 2 | 3>(1);
+  const [inboundProvider, setInboundProvider] = useState<'hotmart' | 'n8n' | 'make'>('n8n');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [inboundEvents, setInboundEvents] = useState<InboundEventRow[]>([]);
+  const [testLoading, setTestLoading] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string; raw?: any } | null>(null);
 
   // Confirm modals
   const [confirmDeleteInboundOpen, setConfirmDeleteInboundOpen] = useState(false);
@@ -168,27 +174,21 @@ export const WebhooksSection: React.FC = () => {
     setTimeout(() => setCopiedKey(null), 1200);
   }
 
-  function CodeBlock({ label, text, copyKey }: { label: string; text: string; copyKey: string }) {
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-xs font-bold text-slate-600 dark:text-slate-300">{label}</div>
-          <button
-            onClick={() => copy(text, copyKey)}
-            className="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200"
-          >
-            {copiedKey === copyKey ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-            Copiar
-          </button>
-        </div>
-        <pre className="whitespace-pre-wrap text-xs p-3 rounded-lg bg-slate-900 text-slate-100 border border-slate-800">
-          {text}
-        </pre>
-      </div>
-    );
+  async function loadInboundEvents(sourceId: string) {
+    if (!canUse) return;
+    if (!supabase) return;
+    if (!profile?.organization_id) return;
+    const { data } = await supabase
+      .from('webhook_events_in')
+      .select('id,received_at,status,external_event_id,error,created_deal_id')
+      .eq('organization_id', profile.organization_id)
+      .eq('source_id', sourceId)
+      .order('received_at', { ascending: false })
+      .limit(3);
+    setInboundEvents((data as any) || []);
   }
 
-  async function handleActivateInbound() {
+  async function createInboundSource() {
     if (!canUse) return;
     if (!selectedBoard?.id || !selectedStageId) return;
 
@@ -211,38 +211,81 @@ export const WebhooksSection: React.FC = () => {
       if (error) throw error;
 
       const sourceId = (data as any)?.id as string;
-      const url = buildWebhookUrl(sourceId);
-      setCreatedUrl(url);
-      setCreatedSecret(secret);
-      setIsWizardOpen(false);
-      setIsDoneOpen(true);
-
-      // refresh list
-      setSources((prev) => [{ id: sourceId, name: 'Entrada de Leads', entry_board_id: selectedBoard.id, entry_stage_id: selectedStageId, secret, active: true }, ...prev]);
-
-      if (createTestLead) {
-        await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Webhook-Secret': secret,
-          },
-          body: JSON.stringify({
-            external_event_id: `teste-${Date.now()}`,
-            name: 'Lead Teste',
-            email: `teste+${Date.now()}@exemplo.com`,
-            phone: '+55...',
-            source: 'webhook',
-          }),
-        });
-        addToast('Lead de teste enviado! Verifique o funil.', 'success');
-      } else {
-        addToast('Entrada de leads ativada!', 'success');
-      }
+      setSources((prev) => [
+        { id: sourceId, name: 'Entrada de Leads', entry_board_id: selectedBoard.id, entry_stage_id: selectedStageId, secret, active: true },
+        ...prev,
+      ]);
+      setInboundStep(2);
+      await loadInboundEvents(sourceId);
+      addToast('Pronto: URL e Secret gerados.', 'success');
     } catch (e: any) {
       addToast(e?.message || 'Erro ao ativar entrada de leads', 'error');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function saveInboundDestination() {
+    if (!canUse) return;
+    if (!activeInbound?.id) return;
+    if (!selectedBoard?.id || !selectedStageId) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('integration_inbound_sources')
+        .update({
+          entry_board_id: selectedBoard.id,
+          entry_stage_id: selectedStageId,
+        })
+        .eq('id', activeInbound.id);
+      if (error) throw error;
+      addToast('Destino atualizado.', 'success');
+      await loadWebhooks();
+    } catch (e: any) {
+      addToast(e?.message || 'Erro ao atualizar destino', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runInboundTest() {
+    if (!activeInbound) return;
+    const url = buildWebhookUrl(activeInbound.id);
+    setTestLoading(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Webhook-Secret': activeInbound.secret,
+          Authorization: `Bearer ${activeInbound.secret}`,
+        },
+        body: JSON.stringify({
+          external_event_id: `ui-test-${Date.now()}`,
+          contact_name: 'Lead Teste',
+          email: `teste+${Date.now()}@exemplo.com`,
+          phone: '+5511999999999',
+          source: 'webhook-ui',
+          deal_title: 'Teste de Webhook',
+          deal_value: 0,
+          company_name: 'Empresa Teste',
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setTestResult({ ok: false, message: json?.error || 'Falha no teste', raw: json });
+        addToast(json?.error || 'Falha no teste do webhook', 'error');
+      } else {
+        setTestResult({ ok: true, message: json?.message || 'Recebido!', raw: json });
+        addToast('Teste recebido com sucesso.', 'success');
+      }
+      await loadInboundEvents(activeInbound.id);
+    } catch (e: any) {
+      setTestResult({ ok: false, message: e?.message || 'Erro no teste' });
+      addToast(e?.message || 'Erro no teste do webhook', 'error');
+    } finally {
+      setTestLoading(false);
     }
   }
 
@@ -292,39 +335,18 @@ export const WebhooksSection: React.FC = () => {
     }
   }
 
-  async function handleEditInbound() {
-    if (!activeInbound) return;
-    setWizardMode('edit');
-    setEditingSourceId(activeInbound.id);
-    setSelectedBoardId(activeInbound.entry_board_id);
-    setSelectedStageId(activeInbound.entry_stage_id);
-    setCreateTestLead(false);
-    setIsWizardOpen(true);
-  }
-
-  async function handleSaveInboundEdit() {
-    if (!canUse) return;
-    if (!editingSourceId) return;
-    if (!selectedBoard?.id || !selectedStageId) return;
-
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from('integration_inbound_sources')
-        .update({
-          entry_board_id: selectedBoard.id,
-          entry_stage_id: selectedStageId,
-        })
-        .eq('id', editingSourceId);
-      if (error) throw error;
-      addToast('Entrada de leads atualizada!', 'success');
-      await loadWebhooks();
-      setIsWizardOpen(false);
-    } catch (e: any) {
-      addToast(e?.message || 'Erro ao atualizar entrada de leads', 'error');
-    } finally {
-      setLoading(false);
+  function openQuickStart(tab: 'inbound' | 'outbound') {
+    setQuickStartTab(tab);
+    setInboundStep(1);
+    setTestResult(null);
+    setCopiedKey(null);
+    setInboundProvider('n8n');
+    if (tab === 'inbound' && activeInbound) {
+      setSelectedBoardId(activeInbound.entry_board_id);
+      setSelectedStageId(activeInbound.entry_stage_id);
+      loadInboundEvents(activeInbound.id);
     }
+    setIsQuickStartOpen(true);
   }
 
   async function handleToggleInboundActive(nextActive: boolean) {
@@ -437,7 +459,7 @@ export const WebhooksSection: React.FC = () => {
           Dica: se você está integrando com Hotmart/n8n/Make, use o guia rápido.
         </div>
         <button
-          onClick={() => setIsHelpOpen(true)}
+          onClick={() => openQuickStart('inbound')}
           className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
         >
           <HelpCircle className="h-4 w-4" />
@@ -494,12 +516,12 @@ export const WebhooksSection: React.FC = () => {
                     {copiedKey === 'inboundSecret' && <Check className="h-4 w-4 text-green-600" />}
                   </button>
                   <button
-                    onClick={handleEditInbound}
+                    onClick={() => openQuickStart('inbound')}
                     disabled={loading}
                     className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors disabled:opacity-60"
                   >
                     <Pencil className="h-4 w-4" />
-                    Editar
+                    Ajustar / Testar
                   </button>
                   <button
                     onClick={() => handleToggleInboundActive(!activeInbound.active)}
@@ -534,7 +556,7 @@ export const WebhooksSection: React.FC = () => {
             ) : (
               <div className="mt-4">
                 <button
-                  onClick={() => { setWizardMode('create'); setEditingSourceId(null); setIsWizardOpen(true); }}
+                  onClick={() => openQuickStart('inbound')}
                   disabled={loading || boardsLoading || boards.length === 0}
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                 >
@@ -632,153 +654,472 @@ export const WebhooksSection: React.FC = () => {
         </div>
       )}
 
-      {/* Wizard modal (1 passo) */}
+      {/* Quick Start (produto) */}
       <Modal
-        isOpen={isWizardOpen}
-        onClose={() => setIsWizardOpen(false)}
-        title={wizardMode === 'edit' ? 'Editar entrada de leads' : 'Ativar entrada de leads'}
-        size="sm"
+        isOpen={isQuickStartOpen}
+        onClose={() => setIsQuickStartOpen(false)}
+        title="Webhooks (guia rápido)"
+        size="xl"
+        bodyClassName="max-h-[70vh] overflow-auto"
       >
-        <div className="space-y-4">
-          <div className="text-sm text-slate-600 dark:text-slate-300">
-            Onde você quer que novos leads entrem no CRM?
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Board (funil)</label>
-            <select
-              value={selectedBoard?.id || ''}
-              onChange={(e) => {
-                setSelectedBoardId(e.target.value);
-                setSelectedStageId('');
-              }}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-slate-900 dark:text-white"
-            >
-              {boards.map(b => (
-                <option key={b.id} value={b.id}>
-                  {b.name}{b.isDefault ? ' (padrão)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Estágio de entrada</label>
-            <select
-              value={selectedStageId}
-              onChange={(e) => setSelectedStageId(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-slate-900 dark:text-white"
-              disabled={!selectedBoard || stages.length === 0}
-            >
-              {stages.map(s => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {wizardMode === 'create' ? (
-            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-              <input
-                type="checkbox"
-                checked={createTestLead}
-                onChange={(e) => setCreateTestLead(e.target.checked)}
-              />
-              Criar um lead de teste ao finalizar
-            </label>
-          ) : null}
-
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <button
-              onClick={() => setIsWizardOpen(false)}
-              className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={wizardMode === 'edit' ? handleSaveInboundEdit : handleActivateInbound}
-              disabled={loading || !selectedBoard?.id || !selectedStageId}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              {wizardMode === 'edit' ? 'Salvar' : 'Ativar agora'}
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Done modal */}
-      <Modal
-        isOpen={isDoneOpen}
-        onClose={() => setIsDoneOpen(false)}
-        title="Pronto! Sua entrada de leads está ativa"
-        size="md"
-      >
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <div className="text-xs font-bold text-slate-600 dark:text-slate-300">URL do webhook</div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 px-3 py-2 rounded-lg bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 font-mono text-xs text-slate-800 dark:text-slate-200 break-all">
-                {createdUrl}
+        <div className="space-y-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Conecte em <b>minutos</b>: gere URL/Secret, configure no seu provedor e faça um teste.
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Você pode usar <code className="font-mono">X-Webhook-Secret</code> <span className="mx-1">ou</span>{' '}
+                <code className="font-mono">Authorization: Bearer</code>.
               </div>
+            </div>
+            <div className="inline-flex rounded-xl bg-slate-100 dark:bg-white/10 p-1 border border-slate-200 dark:border-white/10">
               <button
-                onClick={() => copy(createdUrl, 'createdUrl')}
-                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10"
-                aria-label="Copiar URL"
+                type="button"
+                onClick={() => setQuickStartTab('inbound')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-sm font-bold transition-colors',
+                  quickStartTab === 'inbound'
+                    ? 'bg-white dark:bg-black/20 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10'
+                )}
               >
-                {copiedKey === 'createdUrl' ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                Receber leads
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickStartTab('outbound')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-sm font-bold transition-colors',
+                  quickStartTab === 'outbound'
+                    ? 'bg-white dark:bg-black/20 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10'
+                )}
+              >
+                Follow-up
               </button>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="text-xs font-bold text-slate-600 dark:text-slate-300">Secret</div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 px-3 py-2 rounded-lg bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 font-mono text-xs text-slate-800 dark:text-slate-200 break-all">
-                {createdSecret}
+          {quickStartTab === 'outbound' ? (
+            <div className="space-y-4">
+              <div className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+                <b>Follow-up</b> envia um aviso quando um lead muda de etapa. Você cola uma URL (n8n/Make/WhatsApp) e
+                valida o Secret no seu lado.
               </div>
-              <button
-                onClick={() => copy(createdSecret, 'createdSecret')}
-                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10"
-                aria-label="Copiar secret"
-              >
-                {copiedKey === 'createdSecret' ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-              </button>
+              <div className="p-4 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm text-slate-700 dark:text-slate-200">
+                    {endpoint?.url ? (
+                      <>
+                        <div className="text-xs font-bold text-slate-500 dark:text-slate-400">URL atual</div>
+                        <div className="mt-1 font-mono text-xs break-all">{endpoint.url}</div>
+                      </>
+                    ) : (
+                      <>Nenhum follow-up conectado ainda.</>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsQuickStartOpen(false);
+                      if (endpoint?.url) setFollowUpUrl(endpoint.url);
+                      setIsFollowUpOpen(true);
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+                  >
+                    Configurar
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Dica: para testar, mova um deal de etapa — o aviso dispara somente na mudança.
+              </div>
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              Dica: copie e cole este secret no seu Hotmart/n8n/Make. Ele funciona como senha do webhook.
-            </div>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Stepper */}
+              <div className="flex items-center gap-2">
+                {[
+                  { n: 1 as const, label: 'Destino' },
+                  { n: 2 as const, label: 'Conexão' },
+                  { n: 3 as const, label: 'Teste' },
+                ].map((s, idx) => (
+                  <button
+                    key={s.n}
+                    type="button"
+                    onClick={() => setInboundStep(s.n)}
+                    className={cn(
+                      'group flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-bold transition-colors',
+                      inboundStep === s.n
+                        ? 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white'
+                        : 'bg-transparent border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'h-6 w-6 rounded-full inline-flex items-center justify-center text-xs border',
+                        inboundStep === s.n
+                          ? 'bg-primary-600 text-white border-primary-600'
+                          : 'bg-transparent border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 group-hover:bg-white dark:group-hover:bg-black/20'
+                      )}
+                    >
+                      {s.n}
+                    </span>
+                    <span>{s.label}</span>
+                    {idx < 2 ? <span className="text-slate-300 dark:text-white/10">/</span> : null}
+                  </button>
+                ))}
+              </div>
 
-          <div className="space-y-2">
-            <div className="text-xs font-bold text-slate-600 dark:text-slate-300">Exemplo (cURL)</div>
-            <div className="relative">
-              <pre className="whitespace-pre-wrap text-xs p-3 rounded-lg bg-slate-900 text-slate-100 border border-slate-800">
-                {buildCurlExample(createdUrl, createdSecret)}
-              </pre>
-              <button
-                onClick={() => copy(buildCurlExample(createdUrl, createdSecret), 'curl')}
-                className="absolute top-2 right-2 px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-xs text-slate-100 inline-flex items-center gap-1"
-              >
-                {copiedKey === 'curl' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                Copiar
-              </button>
-            </div>
-          </div>
+              {/* Step 1: Destino */}
+              {inboundStep === 1 ? (
+                <div className="space-y-4">
+                  <div className="text-sm text-slate-700 dark:text-slate-200">
+                    Escolha <b>qual funil</b> e <b>qual etapa</b> o lead vai cair.
+                  </div>
 
-          <div className="pt-2 flex items-center justify-between">
-            <button
-              onClick={() => { setIsDoneOpen(false); setIsFollowUpOpen(true); }}
-              className="text-sm font-bold text-primary-600 dark:text-primary-400 hover:underline"
-            >
-              Conectar follow-up agora (opcional)
-            </button>
-            <button
-              onClick={() => setIsDoneOpen(false)}
-              className="px-4 py-2 rounded-lg text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 transition-colors"
-            >
-              Fechar
-            </button>
-          </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Funil</label>
+                      <select
+                        value={selectedBoard?.id || ''}
+                        onChange={(e) => {
+                          setSelectedBoardId(e.target.value);
+                          setSelectedStageId('');
+                        }}
+                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-slate-900 dark:text-white"
+                        disabled={boardsLoading || boards.length === 0}
+                      >
+                        {boards.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                            {b.isDefault ? ' (padrão)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Etapa</label>
+                      <select
+                        value={selectedStageId}
+                        onChange={(e) => setSelectedStageId(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-slate-900 dark:text-white"
+                        disabled={!selectedBoard || stages.length === 0}
+                      >
+                        {stages.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      {activeInbound ? (
+                        <>
+                          Atual: <b>{inboundBoardName}</b> → <b>{inboundStageLabel}</b>
+                        </>
+                      ) : (
+                        <>Você vai gerar uma URL única e um Secret (senha) para esse destino.</>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {activeInbound ? (
+                        <button
+                          type="button"
+                          onClick={saveInboundDestination}
+                          disabled={loading || !selectedBoard?.id || !selectedStageId}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors disabled:opacity-60"
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Salvar destino
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setInboundStep(2)}
+                          disabled={!selectedBoard?.id || !selectedStageId}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Continuar
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Step 2: Conexão */}
+              {inboundStep === 2 ? (
+                <div className="space-y-4">
+                  <div className="text-sm text-slate-700 dark:text-slate-200">
+                    Copie a <b>URL</b> e o <b>Secret</b> e cole no seu provedor (Hotmart / n8n / Make).
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-3">
+                    {activeInbound ? (
+                      <>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-xs font-bold text-slate-600 dark:text-slate-300">URL do webhook</div>
+                            <button
+                              type="button"
+                              onClick={() => copy(buildWebhookUrl(activeInbound.id), 'qsUrl')}
+                              className="inline-flex items-center gap-2 px-2 py-1 rounded-lg bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200"
+                            >
+                              {copiedKey === 'qsUrl' ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                              Copiar
+                            </button>
+                          </div>
+                          <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 font-mono text-xs text-slate-800 dark:text-slate-200 break-all">
+                            {buildWebhookUrl(activeInbound.id)}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-xs font-bold text-slate-600 dark:text-slate-300">Secret (senha)</div>
+                            <button
+                              type="button"
+                              onClick={() => copy(activeInbound.secret, 'qsSecret')}
+                              className="inline-flex items-center gap-2 px-2 py-1 rounded-lg bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200"
+                            >
+                              {copiedKey === 'qsSecret' ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                              Copiar
+                            </button>
+                          </div>
+                          <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 font-mono text-xs text-slate-800 dark:text-slate-200 break-all">
+                            {activeInbound.secret}
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            Envie no header <code className="font-mono">X-Webhook-Secret</code> (ou{' '}
+                            <code className="font-mono">Authorization: Bearer</code>).
+                          </div>
+                        </div>
+
+                        <details className="rounded-xl bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 p-3">
+                          <summary className="cursor-pointer text-sm font-bold text-slate-900 dark:text-white">
+                            Exemplo pronto (cURL)
+                          </summary>
+                          <div className="mt-3 relative">
+                            <pre className="whitespace-pre-wrap text-xs p-3 rounded-lg bg-slate-900 text-slate-100 border border-slate-800">
+                              {buildCurlExample(buildWebhookUrl(activeInbound.id), activeInbound.secret)}
+                            </pre>
+                            <button
+                              type="button"
+                              onClick={() => copy(buildCurlExample(buildWebhookUrl(activeInbound.id), activeInbound.secret), 'qsCurl')}
+                              className="absolute top-2 right-2 px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-xs text-slate-100 inline-flex items-center gap-1"
+                            >
+                              {copiedKey === 'qsCurl' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                              Copiar
+                            </button>
+                          </div>
+                        </details>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm text-slate-700 dark:text-slate-200">
+                          Gere sua URL e Secret para começar.
+                        </div>
+                        <button
+                          type="button"
+                          onClick={createInboundSource}
+                          disabled={loading || !selectedBoard?.id || !selectedStageId}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Gerar URL e Secret
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs font-bold text-slate-600 dark:text-slate-300">Seu provedor</div>
+                      <div className="inline-flex rounded-xl bg-white dark:bg-white/10 p-1 border border-slate-200 dark:border-white/10">
+                        {(
+                          [
+                            { key: 'hotmart' as const, label: 'Hotmart' },
+                            { key: 'n8n' as const, label: 'n8n' },
+                            { key: 'make' as const, label: 'Make' },
+                          ] as const
+                        ).map((p) => (
+                          <button
+                            key={p.key}
+                            type="button"
+                            onClick={() => setInboundProvider(p.key)}
+                            className={cn(
+                              'px-3 py-1.5 rounded-lg text-sm font-bold transition-colors',
+                              inboundProvider === p.key
+                                ? 'bg-white dark:bg-black/20 text-slate-900 dark:text-white shadow-sm'
+                                : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10'
+                            )}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+                      {inboundProvider === 'hotmart' ? (
+                        <>
+                          Cole a <b>URL</b> no webhook do produto e envie o Secret no header{' '}
+                          <code className="font-mono">X-Webhook-Secret</code>. No body, envie JSON com pelo menos{' '}
+                          <b>email</b> ou <b>phone</b>.
+                        </>
+                      ) : inboundProvider === 'make' ? (
+                        <>
+                          Use um módulo <b>HTTP</b> com <b>POST</b> e <b>JSON</b>. Headers: <code className="font-mono">X-Webhook-Secret</code>{' '}
+                          (ou <code className="font-mono">Authorization: Bearer</code>). Body: email ou phone.
+                        </>
+                      ) : (
+                        <>
+                          Use <b>HTTP Request</b> (POST) com <b>JSON</b>. Headers: <code className="font-mono">X-Webhook-Secret</code>{' '}
+                          (ou <code className="font-mono">Authorization: Bearer</code>). Body: email ou phone.
+                        </>
+                      )}
+                    </div>
+
+                    <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      Quer deixar “bonito”? Envie também <code className="font-mono">contact_name</code>,{' '}
+                      <code className="font-mono">company_name</code> e <code className="font-mono">deal_title</code>.
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setInboundStep(1)}
+                      className="px-3 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                    >
+                      Voltar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInboundStep(3)}
+                      disabled={!activeInbound}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Fazer teste
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Step 3: Teste */}
+              {inboundStep === 3 ? (
+                <div className="space-y-4">
+                  <div className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+                    Envie um evento de teste para confirmar que está tudo certo. Isso cria/atualiza um lead de teste no
+                    funil.
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div className="p-4 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-bold text-slate-900 dark:text-white">Teste agora</div>
+                        <button
+                          type="button"
+                          onClick={runInboundTest}
+                          disabled={!activeInbound || testLoading}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {testLoading ? 'Enviando...' : 'Enviar teste'}
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {testResult ? (
+                        <div
+                          className={cn(
+                            'p-3 rounded-xl border text-sm',
+                            testResult.ok
+                              ? 'bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/30 text-green-800 dark:text-green-200'
+                              : 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30 text-red-800 dark:text-red-200'
+                          )}
+                        >
+                          <div className="font-bold">{testResult.ok ? 'Recebido ✓' : 'Falhou'}</div>
+                          <div className="mt-1">{testResult.message}</div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          Dica: se o seu provedor estiver configurado, você também pode mandar um lead real e ver os
+                          eventos aqui.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-3">
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">Últimos recebidos</div>
+                      {activeInbound ? (
+                        inboundEvents.length > 0 ? (
+                          <div className="space-y-2">
+                            {inboundEvents.map((ev) => (
+                              <div
+                                key={ev.id}
+                                className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10"
+                              >
+                                <div className="min-w-0">
+                                  <div className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
+                                    {new Date(ev.received_at).toLocaleString()}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                                    {ev.external_event_id ? `event_id: ${ev.external_event_id}` : 'event_id: —'}
+                                  </div>
+                                </div>
+                                <div className="text-xs font-bold">
+                                  {String(ev.status || '').toLowerCase().includes('processed') ? (
+                                    <span className="text-green-700 dark:text-green-300">OK</span>
+                                  ) : String(ev.status || '').toLowerCase().includes('received') ? (
+                                    <span className="text-slate-600 dark:text-slate-300">Recebido</span>
+                                  ) : (
+                                    <span className="text-red-700 dark:text-red-300">Erro</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-slate-600 dark:text-slate-300">
+                            Ainda não recebemos nada. Envie um teste.
+                          </div>
+                        )
+                      ) : (
+                        <div className="text-sm text-slate-600 dark:text-slate-300">
+                          Gere a URL/Secret antes de testar.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setInboundStep(2)}
+                      className="px-3 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                    >
+                      Voltar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickStartOpen(false)}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+                    >
+                      Concluir
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -852,167 +1193,6 @@ export const WebhooksSection: React.FC = () => {
         variant="danger"
       />
 
-      <Modal
-        isOpen={isHelpOpen}
-        onClose={() => setIsHelpOpen(false)}
-        title="Como usar Webhooks (guia rápido)"
-        size="xl"
-        bodyClassName="max-h-[70vh] overflow-auto"
-      >
-        <div className="space-y-6">
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10">
-            <div className="text-sm font-extrabold text-slate-900 dark:text-white">Em 1 frase</div>
-            <div className="mt-2 text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
-              <b>Entrada</b> = você cola uma URL/“senha” no seu provedor (Hotmart/n8n/Make) e os leads entram sozinhos no funil.
-              <br />
-              <b>Follow-up</b> = quando o lead muda de etapa, o CRM avisa seu sistema (n8n/Make/WhatsApp).
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="text-sm font-extrabold text-slate-900 dark:text-white">1) Entrada de Leads (Entrada automática no funil)</div>
-            <ol className="list-decimal pl-5 text-sm text-slate-700 dark:text-slate-200 space-y-1">
-              <li>
-                Clique em <b>Ativar entrada de leads</b> e escolha <b>qual funil</b> e <b>qual etapa</b> o lead vai cair.
-              </li>
-              <li>
-                Copie a <b>URL</b> e o <b>Secret</b> (é a “senha” do webhook).
-              </li>
-              <li>
-                No Hotmart/n8n/Make, crie um fluxo que <b>envia os dados do lead</b> para essa URL usando esse Secret.
-              </li>
-            </ol>
-
-            <div className="p-4 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10">
-              <div className="text-xs font-bold text-slate-600 dark:text-slate-300">O que você precisa mandar (bem simples)</div>
-              <div className="mt-2 text-sm text-slate-700 dark:text-slate-200">
-                Pelo menos um destes:
-                <ul className="mt-1 list-disc pl-5 space-y-1">
-                  <li><b>E-mail</b> do lead</li>
-                  <li><b>Telefone</b> do lead</li>
-                </ul>
-              </div>
-              <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                Dica: se você mandar também <b>nome</b>, fica tudo mais bonito no CRM.
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-2">
-                <div className="text-xs font-bold text-slate-600 dark:text-slate-300">A “senha” (obrigatório)</div>
-                <div className="text-sm text-slate-700 dark:text-slate-200">
-                  No seu provedor, configure para enviar o header:
-                  <div className="mt-2 font-mono text-xs bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg p-2">
-                    X-Webhook-Secret: {'<secret>'}
-                  </div>
-                </div>
-              </div>
-              <div className="p-4 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-2">
-                <div className="text-xs font-bold text-slate-600 dark:text-slate-300">Exemplo de dados do lead</div>
-                <div className="text-sm text-slate-700 dark:text-slate-200">
-                  <div className="flex items-center justify-end mb-2">
-                    <button
-                      onClick={() =>
-                        copy(
-                          `{"deal_title":"Contrato Anual - Acme","deal_value":12000,"company_name":"Empresa Ltd","contact_name":"Ana","email":"ana@exemplo.com","phone":"+5511999999999","source":"hotmart"}`,
-                          'leadExample'
-                        )
-                      }
-                      className="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200"
-                    >
-                      {copiedKey === 'leadExample' ? (
-                        <Check className="h-3 w-3 text-green-600" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
-                      Copiar
-                    </button>
-                  </div>
-                  <div className="font-mono text-xs bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg p-2 break-all">
-                    {`{ "deal_title": "Contrato Anual - Acme", "deal_value": 12000, "company_name": "Empresa Ltd", "contact_name": "Ana", "email": "ana@exemplo.com", "phone": "+5511999999999", "source": "hotmart" }`}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <details className="rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4">
-              <summary className="cursor-pointer text-sm font-bold text-slate-900 dark:text-white">
-                Detalhes técnicos (se você precisar)
-              </summary>
-              <div className="mt-3 space-y-3">
-                {(() => {
-                  const inboundUrl = activeInbound ? buildWebhookUrl(activeInbound.id) : `https://SEU-PROJETO.supabase.co/functions/v1/webhook-in/<source_id>`;
-                  const inboundSecret = activeInbound ? activeInbound.secret : '<secret>';
-                  const curl = buildCurlExample(inboundUrl, inboundSecret);
-                  return <CodeBlock label="Teste rápido (cURL)" text={curl} copyKey="helpCurlInbound" />;
-                })()}
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Se você estiver no n8n/Make, é equivalente a um “HTTP Request” com método <b>POST</b> + JSON.
-                </div>
-              </div>
-            </details>
-          </div>
-
-          <div className="space-y-3">
-            <div className="text-sm font-extrabold text-slate-900 dark:text-white">2) Follow-up (Aviso quando muda de etapa)</div>
-            <ol className="list-decimal pl-5 text-sm text-slate-700 dark:text-slate-200 space-y-1">
-              <li>Clique em <b>Conectar follow-up</b> e cole a URL do seu endpoint (n8n/Make/etc).</li>
-              <li>Pronto: quando um lead mudar de etapa, o CRM manda um aviso para essa URL.</li>
-              <li>No seu endpoint, confira se a “senha” (Secret) bate com o header <code>X-Webhook-Secret</code>.</li>
-            </ol>
-
-            {endpoint?.url ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-2">
-                  <div className="text-xs font-bold text-slate-600 dark:text-slate-300">Sua URL (para onde o CRM vai avisar)</div>
-                  <div className="text-sm text-slate-700 dark:text-slate-200 font-mono break-all">{endpoint.url}</div>
-                </div>
-                <div className="p-4 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-2">
-                  <div className="text-xs font-bold text-slate-600 dark:text-slate-300">Secret (a “senha” do aviso)</div>
-                  <div className="text-sm text-slate-700 dark:text-slate-200 font-mono break-all">{endpoint.secret}</div>
-                </div>
-              </div>
-            ) : null}
-
-            <details className="rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4">
-              <summary className="cursor-pointer text-sm font-bold text-slate-900 dark:text-white">
-                O que o CRM manda no aviso (detalhes)
-              </summary>
-              <div className="mt-3">
-                <CodeBlock
-                  label="Payload (exemplo)"
-                  copyKey="helpOutboundPayload"
-                  text={`{
-  "event_type": "deal.stage_changed",
-  "occurred_at": "2025-12-26T00:00:00.000Z",
-  "deal": { "title": "...", "board_name": "...", "from_stage_label": "...", "to_stage_label": "..." },
-  "contact": { "name": "...", "phone": "...", "email": "..." }
-}`}
-                />
-              </div>
-            </details>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-sm font-extrabold text-slate-900 dark:text-white">3) Se não funcionar (checklist rápido)</div>
-            <ul className="text-sm text-slate-700 dark:text-slate-200 space-y-1">
-              <li><b>Confere a URL</b> (colou certinho?)</li>
-              <li><b>Confere o Secret</b> (é a mesma “senha” do CRM?)</li>
-              <li><b>Testa manualmente</b> (use o “Detalhes técnicos” e rode o cURL, ou envie um teste no n8n/Make)</li>
-              <li><b>Outbound</b>: pra testar, pegue um lead e <b>mova de etapa</b> — o aviso só dispara quando muda de etapa.</li>
-            </ul>
-          </div>
-
-          <div className="pt-2 flex items-center justify-end">
-            <button
-              onClick={() => setIsHelpOpen(false)}
-              className="px-4 py-2 rounded-lg text-sm font-bold bg-primary-600 text-white hover:bg-primary-700 transition-colors"
-            >
-              Entendi
-            </button>
-          </div>
-        </div>
-      </Modal>
     </SettingsSection>
   );
 };
