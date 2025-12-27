@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, ArrowRight, CheckCircle2, ExternalLink, Loader2, Shield } from 'lucide-react';
+import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion';
 
 type InstallerMeta = {
   enabled: boolean;
@@ -39,6 +40,13 @@ const shouldShowTokenHelp = (message: string) => {
   return text.includes('vercel') && text.includes('token');
 };
 
+const maskValue = (value: string, start = 4, end = 4) => {
+  const v = String(value || '');
+  if (!v) return '';
+  if (v.length <= start + end) return `${'*'.repeat(Math.max(0, v.length - 2))}${v.slice(-2)}`;
+  return `${v.slice(0, start)}${'•'.repeat(Math.max(3, v.length - start - end))}${v.slice(-end)}`;
+};
+
 /**
  * Componente React `InstallStartPage`.
  * @returns {Element} Retorna um valor do tipo `Element`.
@@ -64,6 +72,51 @@ export default function InstallStartPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   // “100% mágico”: só mostramos seleção manual se a detecção automática falhar.
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const mxSpring = useSpring(mx, { stiffness: 120, damping: 30, mass: 0.6 });
+  const mySpring = useSpring(my, { stiffness: 120, damping: 30, mass: 0.6 });
+
+  const setParallaxFromEvent = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dx = (e.clientX - rect.left) / rect.width - 0.5; // [-0.5..0.5]
+    const dy = (e.clientY - rect.top) / rect.height - 0.5;
+    mx.set(dx * 14);
+    my.set(dy * 10);
+  };
+
+  const clearParallax = () => {
+    mx.set(0);
+    my.set(0);
+  };
+
+  const TEAL = {
+    solidText: 'text-cyan-600 dark:text-cyan-400',
+    ring: 'focus:ring-cyan-400/30 focus:border-cyan-400',
+    gradient: 'bg-linear-to-r from-cyan-400 to-teal-400',
+  } as const;
+
+  const sceneVariants = {
+    initial: { opacity: 0, y: 10, filter: 'blur(6px)' },
+    animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+    exit: { opacity: 0, y: -6, filter: 'blur(4px)' },
+  } as const;
+
+  const sceneTransition = {
+    type: 'tween',
+    ease: [0.22, 1, 0.36, 1],
+    duration: 0.32,
+  } as const;
+
+  const chapter = useMemo(() => {
+    // Abertura (antes do wizard): Vercel é o “sinal” que aponta a nave certa.
+    return {
+      title: 'Prólogo — Sinal',
+      subtitle: 'Encontrando sua nave na Vercel.',
+      micro: 'Uma coordenada de cada vez.',
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,12 +165,12 @@ export default function InstallStartPage() {
     setError('');
 
     if (!token.trim()) {
-      setError('Token da Vercel e obrigatorio');
+      setError('Token da Vercel é obrigatório');
       return;
     }
 
     if (meta?.requiresToken && !installerToken.trim()) {
-      setError('Installer token obrigatorio');
+      setError('Installer token obrigatório');
       return;
     }
 
@@ -231,26 +284,51 @@ export default function InstallStartPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-dark-bg relative overflow-hidden">
+    <div
+      className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-dark-bg relative overflow-hidden"
+      onMouseMove={setParallaxFromEvent}
+      onMouseLeave={clearParallax}
+    >
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-        <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] bg-primary-500/20 rounded-full blur-[120px]" />
-        <div className="absolute top-[40%] -left-[10%] w-[40%] h-[40%] bg-blue-500/20 rounded-full blur-[100px]" />
+        {/* Vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06)_0%,rgba(2,6,23,0)_42%,rgba(2,6,23,0.88)_100%)] dark:opacity-100 opacity-0" />
+        {/* Film grain (SVG noise, very subtle) */}
+        <div
+          className="absolute inset-0 opacity-[0.05] mix-blend-overlay"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E\")",
+          }}
+        />
+
+        {/* Nebula blobs (parallax) */}
+        <motion.div
+          className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full blur-[120px] bg-cyan-500/18"
+          style={{ x: mxSpring, y: mySpring }}
+        />
+        <motion.div
+          className="absolute top-[40%] -left-[10%] w-[40%] h-[40%] rounded-full blur-[100px] bg-teal-500/16"
+          style={{ x: mxSpring, y: mySpring }}
+        />
       </div>
 
       <div className="max-w-lg w-full relative z-10 px-4">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary-500/10 border border-primary-200 dark:border-primary-900/40 mb-4">
-            <Shield className="w-7 h-7 text-primary-600 dark:text-primary-400" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-200 dark:border-cyan-900/30 mb-4">
+            <Shield className="w-7 h-7 text-cyan-600 dark:text-cyan-300" />
           </div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white font-display tracking-tight">
-            Instalacao do CRM
+            Instalação do CRM
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2">
-            Precisamos do seu token da Vercel para detectar o projeto correto.
+            Precisamos do seu token da Vercel para detectar o projeto certo.
           </p>
         </div>
 
-        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl p-8 backdrop-blur-sm">
+        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl p-8 backdrop-blur-sm relative overflow-hidden">
+          {/* subtle teal rim light */}
+          <div className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 dark:opacity-100 bg-[radial-gradient(1200px_circle_at_20%_0%,rgba(34,211,238,0.18),transparent_52%),radial-gradient(900px_circle_at_100%_20%,rgba(45,212,191,0.12),transparent_50%)]" />
+
           {!meta && !metaError ? (
             <div className="flex items-center justify-center text-slate-600 dark:text-slate-300 py-8">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -274,84 +352,128 @@ export default function InstallStartPage() {
 
           {meta?.enabled ? (
             <>
-              {step === 'success' ? (
-                <div className="text-center py-10">
-                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary-500/10 mb-4 border border-primary-200 dark:border-primary-900/40">
-                    <CheckCircle2 className="w-7 h-7 text-primary-600 dark:text-primary-400" />
+              {chapter ? (
+                <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-slate-900/30 p-4 space-y-1 relative z-10 mb-5">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    {chapter.title}
                   </div>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                    Projeto confirmado!
-                  </h2>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm">
-                    Redirecionando para o wizard...
-                  </p>
-                </div>
-              ) : step === 'confirm' && project ? (
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-                      Projeto encontrado
-                    </h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">
-                      Confirme se este e o projeto correto.
-                    </p>
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {chapter.subtitle}
                   </div>
-
-                  <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500 dark:text-slate-400">Nome</span>
-                      <span className="text-slate-900 dark:text-white font-medium">
-                        {project.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500 dark:text-slate-400">URL</span>
-                      <a
-                        href={`https://${project.url || `${project.name}.vercel.app`}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
-                      >
-                        {project.url || `${project.name}.vercel.app`}
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500 dark:text-slate-400">Dominio atual</span>
-                      <span className="text-slate-900 dark:text-white font-mono">
-                        {typeof window !== 'undefined' ? window.location.hostname : ''}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={handleReset}
-                      className="flex-1 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 font-medium py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 active:scale-[0.99]"
-                    >
-                      Voltar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleConfirm}
-                      className="flex-1 bg-primary-600 hover:bg-primary-500 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 active:scale-[0.98]"
-                    >
-                      Confirmar
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    {chapter.micro}
                   </div>
                 </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-                      Token da Vercel
-                    </h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">
-                      Vamos usar seu token para configurar as envs automaticamente.
-                    </p>
-                  </div>
+              ) : null}
+
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={`start-scene-${step}`}
+                  variants={sceneVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={sceneTransition}
+                  className="relative z-10"
+                >
+                  {step === 'success' ? (
+                    <div className="text-center py-10">
+                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-cyan-500/10 mb-4 border border-cyan-200 dark:border-cyan-900/30">
+                        <CheckCircle2 className="w-7 h-7 text-cyan-600 dark:text-cyan-300" />
+                      </div>
+                      <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                        Rota confirmada
+                      </h2>
+                      <p className="text-slate-500 dark:text-slate-400 text-sm">
+                        Entrando no wizard…
+                      </p>
+                    </div>
+                  ) : step === 'confirm' && project ? (
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+                          Projeto encontrado
+                        </h2>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">
+                          Confirme se este é o destino correto.
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-500 dark:text-slate-400">Nome</span>
+                          <span className="text-slate-900 dark:text-white font-medium">
+                            {project.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-500 dark:text-slate-400">URL</span>
+                          <a
+                            href={`https://${project.url || `${project.name}.vercel.app`}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`${TEAL.solidText} hover:underline flex items-center gap-1`}
+                          >
+                            {project.url || `${project.name}.vercel.app`}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-500 dark:text-slate-400">Domínio atual</span>
+                          <span className="text-slate-900 dark:text-white font-mono">
+                            {typeof window !== 'undefined' ? window.location.hostname : ''}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-500 dark:text-slate-400">PAT</span>
+                          <span className="text-slate-900 dark:text-white font-mono">
+                            {maskValue(token)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={handleReset}
+                          disabled={isLoading}
+                          className={`flex-1 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 font-medium py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 ${TEAL.ring} active:scale-[0.99] disabled:opacity-50`}
+                        >
+                          Voltar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleConfirm}
+                          disabled={isLoading}
+                          className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/15 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-400/30 active:scale-[0.98] disabled:opacity-50"
+                        >
+                          Confirmar e decolar
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : step === 'validating' ? (
+                    <div className="py-10 text-center space-y-3">
+                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-200 dark:border-cyan-900/30">
+                        <Loader2 className="w-7 h-7 animate-spin text-cyan-600 dark:text-cyan-300" />
+                      </div>
+                      <div className="text-lg font-semibold text-slate-900 dark:text-white">
+                        Calibrando sinais…
+                      </div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">
+                        Estamos detectando o projeto deste deploy.
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                      <div>
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+                          Token da Vercel
+                        </h2>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">
+                          Vamos usar seu token para configurar as envs automaticamente.
+                        </p>
+                      </div>
 
                   {meta.requiresToken ? (
                     <div className="space-y-2">
@@ -361,7 +483,7 @@ export default function InstallStartPage() {
                       <input
                         value={installerToken}
                         onChange={(e) => setInstallerToken(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500"
+                        className={`w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 ${TEAL.ring}`}
                         placeholder="Token interno (opcional)"
                         disabled={isLoading}
                       />
@@ -376,7 +498,7 @@ export default function InstallStartPage() {
                       type="password"
                       value={token}
                       onChange={(e) => setToken(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 font-mono text-sm"
+                      className={`w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 ${TEAL.ring} font-mono text-sm`}
                       placeholder="pat_xxx"
                       disabled={isLoading}
                     />
@@ -447,7 +569,7 @@ export default function InstallStartPage() {
                               type="button"
                               onClick={lookupVercel}
                               disabled={lookupLoading || isLoading || !token.trim()}
-                              className="text-xs underline underline-offset-2 text-primary-600 dark:text-primary-400"
+                              className={`text-xs underline underline-offset-2 ${TEAL.solidText}`}
                             >
                               Atualizar projetos deste team
                             </button>
@@ -490,7 +612,7 @@ export default function InstallStartPage() {
                         href="https://vercel.com/account/tokens"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary-600 dark:text-primary-400 hover:underline"
+                        className={`${TEAL.solidText} hover:underline`}
                       >
                         vercel.com/account/tokens
                       </a>
@@ -530,7 +652,7 @@ export default function InstallStartPage() {
                   <button
                     type="submit"
                     disabled={isLoading || !token.trim()}
-                    className="w-full bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 active:scale-[0.98]"
+                    className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/15 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-400/30 active:scale-[0.98]"
                   >
                     {isLoading ? (
                       <>
@@ -546,12 +668,14 @@ export default function InstallStartPage() {
                   </button>
                 </form>
               )}
+                </motion.div>
+              </AnimatePresence>
             </>
           ) : null}
         </div>
 
         <p className="text-center text-slate-400 dark:text-slate-500 text-xs mt-6">
-          Seu token e usado apenas para configurar as envs do projeto.
+          Seu token é usado apenas para configurar as envs do projeto.
         </p>
       </div>
     </div>
