@@ -22,7 +22,9 @@
 
 - **Installer (Padrão “100% mágico” para aluno)**:
   - Vercel: por padrão, `install/start` usa **o projeto do deploy atual** (detecção via `VERCEL_PROJECT_ID/VERCEL_ORG_ID` no `/api/installer/bootstrap`); seleção manual via PAT ficou como **modo avançado (fallback)**.
-  - Root redirect: a rota `/` agora redireciona automaticamente para **`/install`** quando `INSTALLER_ENABLED !== 'false'` (evita cair direto no app após o deploy).
+  - Root redirect: a rota `/` agora aplica um **gate inteligente**:
+    - se `INSTALLER_ENABLED !== 'false'` e a instância **não estiver inicializada** (ou não der pra checar), redireciona para **`/install`**;
+    - se a instância já estiver inicializada, segue para **`/dashboard`** (não força `/install`).
   - Supabase:
     - Wizard permite **listar projetos via PAT** e selecionar (preenche `projectRef`/`supabaseUrl`).
     - Wizard permite **criar projeto via PAT** (listar orgs → criar projeto com `db_pass` + região smart group) e já auto-preencher o resto.
