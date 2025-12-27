@@ -46,7 +46,6 @@ function buildCurlExample(url: string, secret: string) {
   -H 'Content-Type: application/json' \\
   -H 'X-Webhook-Secret: ${secret}' \\
   -d '{
-    "external_event_id": "teste-123",
     "deal_title": "Contrato Anual - Acme",
     "deal_value": 12000,
     "company_name": "Empresa Ltd",

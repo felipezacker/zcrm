@@ -95,7 +95,7 @@ Campos aceitos (todos opcionais, mas recomenda-se enviar pelo menos `email` ou `
   - `deal_value` (number|string): valor estimado do negócio
   - `company_name` (string): empresa do cliente
   - `contact_name` (string): nome do contato principal
-- `external_event_id` (string): idempotência/dedupe (recomendado)
+- `external_event_id` (string): **opcional** (recomendado apenas para integrações “de evento” com retry, ex.: Hotmart)
 - `name` (string): (legado) nome do contato
 - `email` (string)
 - `phone` (string)
@@ -108,9 +108,9 @@ Campos aceitos (todos opcionais, mas recomenda-se enviar pelo menos `email` ou `
 Ao receber o `POST`, o handler (`supabase/functions/webhook-in/index.ts`):
 
 - valida `X-Webhook-Secret`
-- registra auditoria em `webhook_events_in` (quando `external_event_id` existe; com dedupe)
+- registra auditoria em `webhook_events_in` quando `external_event_id` existe (idempotência para retry)
 - faz **upsert de contato** por `email` e/ou `phone` (na mesma `organization_id`)
-- cria um **deal** no **board/etapa** configurados na UI
+- cria ou **atualiza** um **deal em aberto** no **board** configurado (para evitar duplicidade em reenvio de “cadastro”)
 - (se enviar `company_name`) cria/vincula a empresa em `crm_companies` e liga no contato/deal via `client_company_id` (best-effort)
 - grava metadados em `deals.custom_fields`:
   - `inbound_source_id`
@@ -123,10 +123,12 @@ curl -X POST 'https://SEU-PROJETO.supabase.co/functions/v1/webhook-in/<source_id
   -H 'Content-Type: application/json' \
   -H 'X-Webhook-Secret: <secret>' \
   -d '{
-    "external_event_id": "teste-123",
-    "name": "Lead Teste",
+    "deal_title": "Contrato Anual - Acme",
+    "deal_value": 12000,
+    "company_name": "Empresa Ltd",
+    "contact_name": "Lead Teste",
     "email": "teste@exemplo.com",
-    "phone": "+55...",
+    "phone": "+5511999999999",
     "source": "webhook"
   }'
 ```
@@ -138,6 +140,8 @@ O endpoint retorna algo como:
 ```json
 {
   "ok": true,
+  "message": "Recebido! Criamos um novo negócio no funil configurado.",
+  "action": { "contact": "created|updated|none", "company": "created|linked|none", "deal": "created|updated" },
   "organization_id": "...",
   "contact_id": "...",
   "deal_id": "..."

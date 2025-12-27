@@ -23,6 +23,8 @@
 -- -----------------------------------------------------------------------------
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
+-- Database Webhooks / HTTP async (Integrações)
+CREATE EXTENSION IF NOT EXISTS pg_net;
 
 -- #############################################################################
 -- PARTE 1: TABELAS PRINCIPAIS
@@ -51,11 +53,17 @@ CREATE TABLE IF NOT EXISTS public.organization_settings (
     ai_google_key text,
     ai_openai_key text,
     ai_anthropic_key text,
+    -- org-wide toggle (admin): desliga/ligar IA para toda a organização
+    ai_enabled boolean NOT NULL DEFAULT true,
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
 );
 
 ALTER TABLE public.organization_settings ENABLE ROW LEVEL SECURITY;
+
+-- Upgrade-safe: garante coluna (caso a tabela já exista por algum motivo)
+ALTER TABLE public.organization_settings
+ADD COLUMN IF NOT EXISTS ai_enabled BOOLEAN NOT NULL DEFAULT true;
 
 -- -----------------------------------------------------------------------------
 -- 3. PROFILES (Usuários - estende auth.users)
@@ -214,6 +222,15 @@ CREATE TABLE IF NOT EXISTS public.products (
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 
 -- -----------------------------------------------------------------------------
+-- 9.1 BOARDS: DEFAULT PRODUCT (produto padrão por pipeline)
+-- -----------------------------------------------------------------------------
+ALTER TABLE public.boards
+ADD COLUMN IF NOT EXISTS default_product_id UUID REFERENCES public.products(id);
+
+CREATE INDEX IF NOT EXISTS boards_default_product_id_idx
+ON public.boards(default_product_id);
+
+-- -----------------------------------------------------------------------------
 -- 10. DEALS (Negócios/Oportunidades)
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.deals (
@@ -279,6 +296,16 @@ CREATE TABLE IF NOT EXISTS public.activities (
 );
 
 ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
+
+-- -----------------------------------------------------------------------------
+-- 12.1 ACTIVITIES: COMPANY + PARTICIPANTS CONTEXT (market-standard CRM pattern)
+-- -----------------------------------------------------------------------------
+ALTER TABLE public.activities
+ADD COLUMN IF NOT EXISTS client_company_id UUID REFERENCES public.crm_companies(id),
+ADD COLUMN IF NOT EXISTS participant_contact_ids UUID[];
+
+CREATE INDEX IF NOT EXISTS idx_activities_client_company_id ON public.activities (client_company_id);
+CREATE INDEX IF NOT EXISTS idx_activities_participant_contact_ids ON public.activities USING GIN (participant_contact_ids);
 
 -- -----------------------------------------------------------------------------
 -- 13. TAGS (Sistema de tags)
@@ -466,6 +493,120 @@ ALTER TABLE public.ai_suggestion_interactions ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_ai_suggestion_user ON public.ai_suggestion_interactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_ai_suggestion_entity ON public.ai_suggestion_interactions(entity_type, entity_id);
+
+-- -----------------------------------------------------------------------------
+-- 22.1 AI_PROMPT_TEMPLATES (Override/versioning por organização)
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.ai_prompt_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  key TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  content TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.ai_prompt_templates ENABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_ai_prompt_templates_org_key ON public.ai_prompt_templates(organization_id, key);
+CREATE INDEX IF NOT EXISTS idx_ai_prompt_templates_org_key_active ON public.ai_prompt_templates(organization_id, key, is_active);
+
+-- Uma versão por key/organization
+CREATE UNIQUE INDEX IF NOT EXISTS ai_prompt_templates_org_key_version_unique
+  ON public.ai_prompt_templates(organization_id, key, version);
+
+-- Apenas um "active" por key/organization
+CREATE UNIQUE INDEX IF NOT EXISTS ai_prompt_templates_org_key_active_unique
+  ON public.ai_prompt_templates(organization_id, key)
+  WHERE is_active;
+
+-- Policies (espelham organization_settings)
+DROP POLICY IF EXISTS "Admins can manage ai prompts" ON public.ai_prompt_templates;
+CREATE POLICY "Admins can manage ai prompts"
+  ON public.ai_prompt_templates
+  FOR ALL
+  TO authenticated
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = ai_prompt_templates.organization_id
+      AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = ai_prompt_templates.organization_id
+      AND role = 'admin'
+    )
+  );
+
+DROP POLICY IF EXISTS "Members can view ai prompts" ON public.ai_prompt_templates;
+CREATE POLICY "Members can view ai prompts"
+  ON public.ai_prompt_templates
+  FOR SELECT
+  TO authenticated
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = ai_prompt_templates.organization_id
+    )
+  );
+
+-- -----------------------------------------------------------------------------
+-- 22.2 AI_FEATURE_FLAGS (org-wide): habilitar/desabilitar funções específicas de IA
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.ai_feature_flags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  key TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.ai_feature_flags ENABLE ROW LEVEL SECURITY;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ai_feature_flags_org_key_unique
+  ON public.ai_feature_flags(organization_id, key);
+
+CREATE INDEX IF NOT EXISTS idx_ai_feature_flags_org
+  ON public.ai_feature_flags(organization_id);
+
+DROP POLICY IF EXISTS "Admins can manage ai feature flags" ON public.ai_feature_flags;
+CREATE POLICY "Admins can manage ai feature flags"
+  ON public.ai_feature_flags
+  FOR ALL
+  TO authenticated
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = ai_feature_flags.organization_id
+      AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = ai_feature_flags.organization_id
+      AND role = 'admin'
+    )
+  );
+
+DROP POLICY IF EXISTS "Members can view ai feature flags" ON public.ai_feature_flags;
+CREATE POLICY "Members can view ai feature flags"
+  ON public.ai_feature_flags
+  FOR SELECT
+  TO authenticated
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = ai_feature_flags.organization_id
+    )
+  );
 
 -- #############################################################################
 -- PARTE 2: TABELAS DE SEGURANÇA
@@ -1482,6 +1623,285 @@ DROP POLICY IF EXISTS "avatar_delete" ON storage.objects;
 CREATE POLICY "avatar_delete" ON storage.objects
     FOR DELETE TO authenticated
     USING (bucket_id = 'avatars');
+
+-- =============================================================================
+-- PART 5.1: INTEGRAÇÕES / WEBHOOKS (produto) - Entrada de Leads + Saída (stage change)
+-- =============================================================================
+-- Obs:
+-- - Usamos pg_net (HTTP async) e persistimos request_id em webhook_deliveries.
+-- - Retries/backoff não fazem parte do MVP.
+
+-- (redundante por segurança: o topo já cria, mas manter é barato e evita drift)
+CREATE EXTENSION IF NOT EXISTS pg_net;
+
+-- Config: fontes inbound (admin-only)
+CREATE TABLE IF NOT EXISTS public.integration_inbound_sources (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL DEFAULT 'Entrada de Leads',
+  entry_board_id UUID NOT NULL REFERENCES public.boards(id),
+  entry_stage_id UUID NOT NULL REFERENCES public.board_stages(id),
+  secret TEXT NOT NULL,
+  active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.integration_inbound_sources ENABLE ROW LEVEL SECURITY;
+
+-- Config: endpoints outbound (admin-only)
+CREATE TABLE IF NOT EXISTS public.integration_outbound_endpoints (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL DEFAULT 'Follow-up (Webhook)',
+  url TEXT NOT NULL,
+  secret TEXT NOT NULL,
+  events TEXT[] NOT NULL DEFAULT ARRAY['deal.stage_changed'],
+  active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.integration_outbound_endpoints ENABLE ROW LEVEL SECURITY;
+
+-- Auditoria mínima: inbound events
+CREATE TABLE IF NOT EXISTS public.webhook_events_in (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  source_id UUID NOT NULL REFERENCES public.integration_inbound_sources(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL DEFAULT 'generic',
+  external_event_id TEXT,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  status TEXT NOT NULL DEFAULT 'received',
+  error TEXT,
+  created_contact_id UUID REFERENCES public.contacts(id),
+  created_deal_id UUID REFERENCES public.deals(id),
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.webhook_events_in ENABLE ROW LEVEL SECURITY;
+
+-- Dedupe inbound quando existir external_event_id
+CREATE UNIQUE INDEX IF NOT EXISTS webhook_events_in_dedupe
+  ON public.webhook_events_in(source_id, external_event_id)
+  WHERE external_event_id IS NOT NULL;
+
+-- Auditoria mínima: outbound events
+CREATE TABLE IF NOT EXISTS public.webhook_events_out (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  deal_id UUID REFERENCES public.deals(id),
+  from_stage_id UUID REFERENCES public.board_stages(id),
+  to_stage_id UUID REFERENCES public.board_stages(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.webhook_events_out ENABLE ROW LEVEL SECURITY;
+
+-- Auditoria mínima: deliveries
+CREATE TABLE IF NOT EXISTS public.webhook_deliveries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  endpoint_id UUID NOT NULL REFERENCES public.integration_outbound_endpoints(id) ON DELETE CASCADE,
+  event_id UUID NOT NULL REFERENCES public.webhook_events_out(id) ON DELETE CASCADE,
+  request_id BIGINT,
+  status TEXT NOT NULL DEFAULT 'queued',
+  attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  response_status INT,
+  error TEXT
+);
+
+ALTER TABLE public.webhook_deliveries ENABLE ROW LEVEL SECURITY;
+
+-- Policies (admin-only)
+DROP POLICY IF EXISTS "Admins can manage inbound sources" ON public.integration_inbound_sources;
+CREATE POLICY "Admins can manage inbound sources"
+  ON public.integration_inbound_sources
+  FOR ALL
+  TO authenticated
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = integration_inbound_sources.organization_id
+        AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = integration_inbound_sources.organization_id
+        AND role = 'admin'
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can manage outbound endpoints" ON public.integration_outbound_endpoints;
+CREATE POLICY "Admins can manage outbound endpoints"
+  ON public.integration_outbound_endpoints
+  FOR ALL
+  TO authenticated
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = integration_outbound_endpoints.organization_id
+        AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = integration_outbound_endpoints.organization_id
+        AND role = 'admin'
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can view inbound webhook events" ON public.webhook_events_in;
+CREATE POLICY "Admins can view inbound webhook events"
+  ON public.webhook_events_in
+  FOR SELECT
+  TO authenticated
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = webhook_events_in.organization_id
+        AND role = 'admin'
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can view outbound webhook events" ON public.webhook_events_out;
+CREATE POLICY "Admins can view outbound webhook events"
+  ON public.webhook_events_out
+  FOR SELECT
+  TO authenticated
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = webhook_events_out.organization_id
+        AND role = 'admin'
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can view deliveries" ON public.webhook_deliveries;
+CREATE POLICY "Admins can view deliveries"
+  ON public.webhook_deliveries
+  FOR SELECT
+  TO authenticated
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.profiles
+      WHERE organization_id = webhook_deliveries.organization_id
+        AND role = 'admin'
+    )
+  );
+
+-- Trigger: deal mudou de estágio -> dispara webhook outbound (MVP)
+CREATE OR REPLACE FUNCTION public.notify_deal_stage_changed()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  endpoint RECORD;
+  board_name TEXT;
+  from_label TEXT;
+  to_label TEXT;
+  contact_name TEXT;
+  contact_phone TEXT;
+  contact_email TEXT;
+  payload JSONB;
+  event_id UUID;
+  delivery_id UUID;
+  req_id BIGINT;
+BEGIN
+  IF (TG_OP <> 'UPDATE') THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.stage_id IS NOT DISTINCT FROM OLD.stage_id THEN
+    RETURN NEW;
+  END IF;
+
+  -- Enriquecimento básico para payload humano
+  SELECT b.name INTO board_name FROM public.boards b WHERE b.id = NEW.board_id;
+  SELECT bs.label INTO to_label FROM public.board_stages bs WHERE bs.id = NEW.stage_id;
+  SELECT bs.label INTO from_label FROM public.board_stages bs WHERE bs.id = OLD.stage_id;
+
+  IF NEW.contact_id IS NOT NULL THEN
+    SELECT c.name, c.phone, c.email
+      INTO contact_name, contact_phone, contact_email
+    FROM public.contacts c
+    WHERE c.id = NEW.contact_id;
+  END IF;
+
+  FOR endpoint IN
+    SELECT * FROM public.integration_outbound_endpoints e
+    WHERE e.organization_id = NEW.organization_id
+      AND e.active = true
+      AND 'deal.stage_changed' = ANY(e.events)
+  LOOP
+    payload := jsonb_build_object(
+      'event_type', 'deal.stage_changed',
+      'occurred_at', now(),
+      'deal', jsonb_build_object(
+        'id', NEW.id,
+        'title', NEW.title,
+        'value', NEW.value,
+        'board_id', NEW.board_id,
+        'board_name', board_name,
+        'from_stage_id', OLD.stage_id,
+        'from_stage_label', from_label,
+        'to_stage_id', NEW.stage_id,
+        'to_stage_label', to_label,
+        'contact_id', NEW.contact_id
+      ),
+      'contact', jsonb_build_object(
+        'name', contact_name,
+        'phone', contact_phone,
+        'email', contact_email
+      )
+    );
+
+    INSERT INTO public.webhook_events_out (organization_id, event_type, payload, deal_id, from_stage_id, to_stage_id)
+    VALUES (NEW.organization_id, 'deal.stage_changed', payload, NEW.id, OLD.stage_id, NEW.stage_id)
+    RETURNING id INTO event_id;
+
+    INSERT INTO public.webhook_deliveries (organization_id, endpoint_id, event_id, status)
+    VALUES (NEW.organization_id, endpoint.id, event_id, 'queued')
+    RETURNING id INTO delivery_id;
+
+    -- Dispara HTTP async (MVP)
+    BEGIN
+      SELECT net.http_post(
+        url := endpoint.url,
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'X-Webhook-Secret', endpoint.secret,
+          'Authorization', ('Bearer ' || endpoint.secret)
+        ),
+        body := payload
+      ) INTO req_id;
+
+      UPDATE public.webhook_deliveries
+        SET request_id = req_id
+      WHERE id = delivery_id;
+    EXCEPTION WHEN OTHERS THEN
+      UPDATE public.webhook_deliveries
+        SET status = 'failed',
+            error = SQLERRM
+      WHERE id = delivery_id;
+    END;
+  END LOOP;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_notify_deal_stage_changed ON public.deals;
+CREATE TRIGGER trg_notify_deal_stage_changed
+AFTER UPDATE ON public.deals
+FOR EACH ROW
+EXECUTE FUNCTION public.notify_deal_stage_changed();
 
 -- =============================================================================
 -- PART 6: REALTIME CONFIGURATION

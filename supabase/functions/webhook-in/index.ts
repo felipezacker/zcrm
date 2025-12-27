@@ -20,6 +20,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 type LeadPayload = {
+  /**
+   * ID do evento no sistema de origem (opcional).
+   * Use quando sua origem for orientada a eventos (ex.: Hotmart) e você quiser idempotência contra retry.
+   * Para “cadastro/atualização” (formulário), não é necessário.
+   */
   external_event_id?: string;
   /** Nome do contato (legado) */
   name?: string;
@@ -193,15 +198,40 @@ Deno.serve(async (req) => {
         status: "received",
       });
 
-    // Unique violation (dedupe) -> OK idempotente
-    if (insertEventErr && !String(insertEventErr.message).toLowerCase().includes("duplicate")) {
-      return json(500, { error: "Falha ao registrar evento", details: insertEventErr.message });
+    // Unique violation (dedupe) -> retorna ids já processados (idempotência)
+    if (insertEventErr) {
+      const msg = String(insertEventErr.message).toLowerCase();
+      if (!msg.includes("duplicate")) {
+        return json(500, { error: "Falha ao registrar evento", details: insertEventErr.message });
+      }
+
+      const { data: existingEvent, error: existingEventErr } = await supabase
+        .from("webhook_events_in")
+        .select("created_contact_id, created_deal_id, status")
+        .eq("source_id", source.id)
+        .eq("external_event_id", externalEventId)
+        .maybeSingle();
+
+      if (!existingEventErr && existingEvent?.created_deal_id) {
+        return json(200, {
+          ok: true,
+          duplicate: true,
+          message: "Recebido! Esse envio já tinha sido processado (não duplicamos nada).",
+          organization_id: source.organization_id,
+          contact_id: existingEvent.created_contact_id ?? null,
+          deal_id: existingEvent.created_deal_id,
+          status: existingEvent.status ?? "processed",
+        });
+      }
+      // se ainda não tem IDs gravados, seguimos o fluxo (best-effort)
     }
   }
 
   // 2) Upsert de contato (por email e/ou telefone)
   let contactId: string | null = null;
   let clientCompanyId: string | null = null;
+  let contactAction: "created" | "updated" | "none" = "none";
+  let companyAction: "created" | "linked" | "none" = "none";
 
   // 2.0) Empresa (best-effort): cria/vincula em crm_companies quando companyName existir
   if (companyName) {
@@ -219,6 +249,7 @@ Deno.serve(async (req) => {
 
       if (existingCompany?.id) {
         clientCompanyId = existingCompany.id as string;
+        companyAction = "linked";
       } else {
         const { data: createdCompany, error: companyCreateErr } = await supabase
           .from("crm_companies")
@@ -231,10 +262,12 @@ Deno.serve(async (req) => {
 
         if (companyCreateErr) throw companyCreateErr;
         clientCompanyId = (createdCompany as any)?.id ?? null;
+        if (clientCompanyId) companyAction = "created";
       }
     } catch {
       // não bloqueia o fluxo do webhook
       clientCompanyId = null;
+      companyAction = "none";
     }
   }
 
@@ -271,6 +304,9 @@ Deno.serve(async (req) => {
           .update(updates)
           .eq("id", contactId);
         if (updErr) return json(500, { error: "Falha ao atualizar contato", details: updErr.message });
+        contactAction = "updated";
+      } else {
+        contactAction = "none";
       }
     } else {
       const { data: created, error: createErr } = await supabase
@@ -290,35 +326,91 @@ Deno.serve(async (req) => {
 
       if (createErr) return json(500, { error: "Falha ao criar contato", details: createErr.message });
       contactId = created?.id ?? null;
+      if (contactId) contactAction = "created";
     }
   }
 
-  // 3) Criar deal no board/estágio de entrada
+  // 3) Deal (cadastro/upsert):
+  // - Se já existir um deal "em aberto" do mesmo contato no mesmo board, atualiza em vez de criar outro.
+  // - Se não existir (ou não tiver contato), cria.
   const dealTitle = dealTitleFromPayload || leadName || leadEmail || leadPhone || "Novo Lead";
-  const { data: createdDeal, error: dealErr } = await supabase
-    .from("deals")
-    .insert({
-      organization_id: source.organization_id,
-      title: dealTitle,
-      value: dealValue ?? 0,
-      probability: 10,
-      priority: "medium",
-      board_id: source.entry_board_id,
-      stage_id: source.entry_stage_id,
-      contact_id: contactId,
-      client_company_id: clientCompanyId,
-      last_stage_change_date: new Date().toISOString(),
-      tags: ["Novo"],
-      custom_fields: {
+
+  let dealId: string | null = null;
+  let dealAction: "created" | "updated" = "created";
+
+  if (contactId) {
+    const { data: existingDeal, error: findDealErr } = await supabase
+      .from("deals")
+      .select("id, stage_id, is_won, is_lost")
+      .eq("organization_id", source.organization_id)
+      .eq("board_id", source.entry_board_id)
+      .eq("contact_id", contactId)
+      .eq("is_won", false)
+      .eq("is_lost", false)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (findDealErr) {
+      return json(500, { error: "Falha ao buscar deal existente", details: findDealErr.message });
+    }
+
+    if (existingDeal?.id) {
+      dealId = existingDeal.id as string;
+      dealAction = "updated";
+
+      const updates: Record<string, unknown> = {
+        title: dealTitle,
+        updated_at: new Date().toISOString(),
+      };
+      if (dealValue !== null) updates.value = dealValue;
+      if (clientCompanyId) updates.client_company_id = clientCompanyId;
+
+      // mantém stage atual (não “puxa” de volta pro stage de entrada)
+      // apenas carimba metadados do inbound
+      updates.custom_fields = {
         inbound_source_id: source.id,
         inbound_external_event_id: externalEventId,
         inbound_company_name: companyName,
-      },
-    })
-    .select("id")
-    .single();
+      };
 
-  if (dealErr) return json(500, { error: "Falha ao criar deal", details: dealErr.message });
+      const { error: updDealErr } = await supabase
+        .from("deals")
+        .update(updates)
+        .eq("id", dealId);
+
+      if (updDealErr) return json(500, { error: "Falha ao atualizar deal", details: updDealErr.message });
+    }
+  }
+
+  if (!dealId) {
+    const { data: createdDeal, error: dealErr } = await supabase
+      .from("deals")
+      .insert({
+        organization_id: source.organization_id,
+        title: dealTitle,
+        value: dealValue ?? 0,
+        probability: 10,
+        priority: "medium",
+        board_id: source.entry_board_id,
+        stage_id: source.entry_stage_id,
+        contact_id: contactId,
+        client_company_id: clientCompanyId,
+        last_stage_change_date: new Date().toISOString(),
+        tags: ["Novo"],
+        custom_fields: {
+          inbound_source_id: source.id,
+          inbound_external_event_id: externalEventId,
+          inbound_company_name: companyName,
+        },
+      })
+      .select("id")
+      .single();
+
+    if (dealErr) return json(500, { error: "Falha ao criar deal", details: dealErr.message });
+    dealId = createdDeal?.id ?? null;
+    dealAction = "created";
+  }
 
   // Atualiza auditoria (best-effort)
   if (externalEventId) {
@@ -327,7 +419,7 @@ Deno.serve(async (req) => {
       .update({
         status: "processed",
         created_contact_id: contactId,
-        created_deal_id: createdDeal?.id ?? null,
+        created_deal_id: dealId,
       })
       .eq("source_id", source.id)
       .eq("external_event_id", externalEventId);
@@ -335,9 +427,18 @@ Deno.serve(async (req) => {
 
   return json(200, {
     ok: true,
+    message:
+      dealAction === "updated"
+        ? "Recebido! Atualizamos o negócio existente com os dados mais recentes."
+        : "Recebido! Criamos um novo negócio no funil configurado.",
+    action: {
+      contact: contactAction,
+      company: companyAction,
+      deal: dealAction,
+    },
     organization_id: source.organization_id,
     contact_id: contactId,
-    deal_id: createdDeal?.id,
+    deal_id: dealId,
   });
 });
 

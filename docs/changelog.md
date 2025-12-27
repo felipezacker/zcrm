@@ -2,6 +2,11 @@
 
 ## 27/12/2025
 
+- **Database (Migrations / Onboarding do aluno)**:
+  - Consolidado o schema do Supabase para **1 única migration** em `supabase/migrations/20251201000000_schema_init.sql`.
+  - Detalhes técnicos: baseline inclui `organization_settings.ai_enabled`, `ai_prompt_templates`, `ai_feature_flags`, `boards.default_product_id`, contexto de empresa/participantes em `activities`, e Integrações/Webhooks (`pg_net`, tabelas `integration_*`/`webhook_*` e trigger em `deals`).
+  - Adicionado guia de auditoria/padronização em `docs/migrations-baseline.md`.
+
 - **CRM (reaplicação de mudanças pendentes)**:
   - Reaplicadas e persistidas no código as melhorias de **Empresas (CRUD + UI padronizada)**, **Inbox (Seed + regra de churn)** e **Atividades (contexto empresa/participantes + ESC no modal)** que estavam visíveis no editor, mas não tinham sido materializadas em commit.
 - **Boards (fix)**:
@@ -29,6 +34,8 @@
     - Adicionado botão **“Copiar cURL (importar no n8n)”** no card de **Entrada de Leads** (fica na área inferior, separado das ações principais).
     - Fix: padronização do slug da Edge Function para **`webhook-in`** (URL única).
     - Melhoria: `webhook-in` agora aceita os campos do modal **Novo Negócio** (`deal_title`, `deal_value`, `company_name`, `contact_name`) e tenta criar/vincular empresa automaticamente.
+    - Ajuste: para “cadastro” (form/n8n), o webhook agora **atualiza** o negócio em aberto do contato (evita duplicar em reenvios) e `external_event_id` ficou **opcional** (útil só para integrações orientadas a evento/retry).
+    - UX: resposta do `webhook-in` agora inclui `message` e `action` (criado/atualizado) para ficar mais leigo-friendly.
 - **Debug Mode (UX)**:
   - Debug agora é **reativo** (sem refresh): toggle dispara evento (`DEBUG_MODE_EVENT`) e `DebugFillButton` usa `useDebugMode`.
   - Fix: geração de telefone fake agora é determinística (sem `fromRegExp`, evitando `\\` no número).
