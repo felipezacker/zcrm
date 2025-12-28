@@ -149,6 +149,55 @@ export default function InstallWizardPage() {
   // Primeiro nome para personalização
   const firstName = useMemo(() => userName.split(' ')[0] || 'você', [userName]);
   
+  // Mensagens cinematográficas para provisioning (estilo Interstellar)
+  const provisioningMessages = useMemo(() => [
+    { title: 'Calibrando coordenadas', subtitle: 'Definindo rota para o novo mundo...' },
+    { title: 'Estabelecendo conexão', subtitle: 'Abrindo canal de comunicação...' },
+    { title: 'Construindo infraestrutura', subtitle: 'Montando a estação orbital...' },
+    { title: 'Ativando sistemas', subtitle: 'Inicializando núcleo de dados...' },
+    { title: 'Sincronizando órbita', subtitle: 'Alinhando com a base de operações...' },
+    { title: 'Verificando integridade', subtitle: 'Checando sistemas de segurança...' },
+    { title: 'Preparando pouso', subtitle: 'Quase lá, comandante...' },
+  ], []);
+  
+  // Estado para mensagem atual de provisioning
+  const [provisioningMsgIndex, setProvisioningMsgIndex] = useState(0);
+  const [provisioningProgress, setProvisioningProgress] = useState(0);
+  const [provisioningStartTime, setProvisioningStartTime] = useState<number | null>(null);
+  
+  // Efeito para rotacionar mensagens durante provisioning
+  useEffect(() => {
+    if (!supabaseProvisioning) {
+      setProvisioningMsgIndex(0);
+      setProvisioningProgress(0);
+      setProvisioningStartTime(null);
+      return;
+    }
+    
+    if (!provisioningStartTime) {
+      setProvisioningStartTime(Date.now());
+    }
+    
+    // Rotaciona mensagens a cada 12 segundos
+    const msgInterval = setInterval(() => {
+      setProvisioningMsgIndex((i) => (i + 1) % provisioningMessages.length);
+    }, 12000);
+    
+    // Atualiza progresso baseado no tempo (estimativa de 100s)
+    const progressInterval = setInterval(() => {
+      if (provisioningStartTime) {
+        const elapsed = (Date.now() - provisioningStartTime) / 1000;
+        const progress = Math.min(95, (elapsed / 100) * 100);
+        setProvisioningProgress(progress);
+      }
+    }, 500);
+    
+    return () => {
+      clearInterval(msgInterval);
+      clearInterval(progressInterval);
+    };
+  }, [supabaseProvisioning, provisioningStartTime, provisioningMessages.length]);
+  
   // Wizard - começa no passo 1 (Supabase), pois Vercel já foi validada no /install/start
   const [currentStep, setCurrentStep] = useState(1);
   const [supabaseUiStep, setSupabaseUiStep] = useState<'pat' | 'deciding' | 'needspace' | 'creating' | 'done'>('pat');
@@ -381,7 +430,10 @@ export default function InstallWizardPage() {
     if (supabaseCreating) return;
     setSupabaseCreateError(null);
     setSupabaseCreating(true);
-    setSupabaseUiStep('creating');
+    // Pula direto para 'done' (tela de provisioning cinematográfica) - não mostra 'creating'
+    setSupabaseUiStep('done');
+    setSupabaseProvisioning(true);
+    setSupabaseProvisioningStatus('PREPARING');
     
     const projectName = suggestProjectName(existingNames);
     const createStart = Date.now();
@@ -825,25 +877,147 @@ export default function InstallWizardPage() {
                   </motion.div>
                 )}
                 
-                {supabaseUiStep === 'creating' && (
-                  <motion.div key="supabase-creating" variants={sceneVariants} initial="initial" animate="animate" exit="exit" transition={sceneTransition} className="text-center py-12">
-                    <div className="relative inline-flex items-center justify-center w-24 h-24 mb-8">
-                      <motion.div className="absolute inset-0 rounded-full border-2 border-cyan-400/30" animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }} />
-                      <motion.div className="absolute inset-2 rounded-full border-2 border-cyan-400/50" animate={{ scale: [1, 1.2, 1], opacity: [0.7, 0.2, 0.7] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }} />
-                      <div className="w-16 h-16 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                {supabaseUiStep === 'done' && supabaseProvisioning && (
+                  <motion.div key="supabase-provisioning" variants={sceneVariants} initial="initial" animate="animate" exit="exit" transition={sceneTransition} className="text-center py-8">
+                    {/* Animação central - Radar/Pulso */}
+                    <div className="relative inline-flex items-center justify-center w-32 h-32 mb-8">
+                      {/* Ondas de radar expandindo */}
+                      <motion.div 
+                        className="absolute inset-0 rounded-full border border-cyan-400/20"
+                        animate={{ scale: [1, 2.5], opacity: [0.6, 0] }}
+                        transition={{ duration: 3, repeat: Infinity, ease: 'easeOut' }}
+                      />
+                      <motion.div 
+                        className="absolute inset-0 rounded-full border border-cyan-400/20"
+                        animate={{ scale: [1, 2.5], opacity: [0.6, 0] }}
+                        transition={{ duration: 3, repeat: Infinity, ease: 'easeOut', delay: 1 }}
+                      />
+                      <motion.div 
+                        className="absolute inset-0 rounded-full border border-cyan-400/20"
+                        animate={{ scale: [1, 2.5], opacity: [0.6, 0] }}
+                        transition={{ duration: 3, repeat: Infinity, ease: 'easeOut', delay: 2 }}
+                      />
+                      
+                      {/* Anel externo rotacionando */}
+                      <motion.div 
+                        className="absolute inset-2 rounded-full border-2 border-dashed border-cyan-400/30"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+                      />
+                      
+                      {/* Anel interno com glow */}
+                      <motion.div 
+                        className="absolute inset-4 rounded-full bg-gradient-to-br from-cyan-500/20 to-teal-500/20 border border-cyan-400/50"
+                        animate={{ 
+                          boxShadow: ['0 0 20px rgba(34,211,238,0.3)', '0 0 40px rgba(34,211,238,0.5)', '0 0 20px rgba(34,211,238,0.3)']
+                        }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                      />
+                      
+                      {/* Ícone central */}
+                      <motion.div 
+                        className="relative w-16 h-16 rounded-full bg-slate-900/80 flex items-center justify-center border border-cyan-400/50"
+                        animate={{ scale: [1, 1.05, 1] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                      >
                         <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-                              </div>
-                            </div>
-                    <h1 className="text-2xl font-bold text-white mb-2">Criando seu projeto</h1>
-                    <p className="text-slate-400 mb-4">{supabaseProvisioningStatus === 'COMING_UP' ? 'Inicializando infraestrutura…' : supabaseProvisioningStatus ? `Status: ${supabaseProvisioningStatus}` : 'Preparando ambiente…'}</p>
-                    <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                      <motion.div className="h-full bg-gradient-to-r from-cyan-400 to-teal-400" initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 120, ease: 'linear' }} />
-                              </div>
-                    <p className="text-slate-500 text-sm mt-4">Isso pode levar até 2 minutos. Não feche esta página.</p>
+                      </motion.div>
+                    </div>
+                    
+                    {/* Mensagem rotativa com animação */}
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={provisioningMsgIndex}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.5 }}
+                        className="mb-6"
+                      >
+                        <h1 className="text-2xl font-bold text-white mb-2">
+                          {provisioningMessages[provisioningMsgIndex]?.title || 'Preparando...'}
+                        </h1>
+                        <p className="text-slate-400">
+                          {provisioningMessages[provisioningMsgIndex]?.subtitle || ''}
+                        </p>
+                      </motion.div>
+                    </AnimatePresence>
+                    
+                    {/* Barra de progresso estilizada */}
+                    <div className="relative w-full mb-4">
+                      <div className="h-2 bg-white/5 rounded-full overflow-hidden backdrop-blur-sm border border-white/10">
+                        <motion.div 
+                          className="h-full bg-gradient-to-r from-cyan-500 via-teal-400 to-cyan-500 rounded-full"
+                          style={{ width: `${provisioningProgress}%` }}
+                          animate={{ 
+                            backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                          }}
+                          transition={{ 
+                            backgroundPosition: { duration: 3, repeat: Infinity, ease: 'linear' }
+                          }}
+                        />
+                      </div>
+                      {/* Glow effect under progress */}
+                      <motion.div 
+                        className="absolute -bottom-2 left-0 h-4 bg-cyan-400/20 rounded-full blur-md"
+                        style={{ width: `${provisioningProgress}%` }}
+                      />
+                    </div>
+                    
+                    {/* Telemetria fake */}
+                    <div className="flex justify-center gap-8 text-xs text-slate-500 font-mono mb-6">
+                      <motion.span
+                        animate={{ opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        SYS: {provisioningProgress.toFixed(0)}%
+                      </motion.span>
+                      <motion.span
+                        animate={{ opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
+                      >
+                        NET: ONLINE
+                      </motion.span>
+                      <motion.span
+                        animate={{ opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity, delay: 0.6 }}
+                      >
+                        DB: {supabaseProvisioningStatus || 'INIT'}
+                      </motion.span>
+                    </div>
+                    
+                    {/* Partículas flutuando */}
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                      {[...Array(6)].map((_, i) => (
+                        <motion.div
+                          key={i}
+                          className="absolute w-1 h-1 bg-cyan-400/40 rounded-full"
+                          style={{
+                            left: `${20 + i * 12}%`,
+                            top: '60%',
+                          }}
+                          animate={{
+                            y: [-20, -60, -20],
+                            opacity: [0, 1, 0],
+                            scale: [0.5, 1, 0.5],
+                          }}
+                          transition={{
+                            duration: 3 + i * 0.5,
+                            repeat: Infinity,
+                            delay: i * 0.4,
+                            ease: 'easeInOut',
+                          }}
+                        />
+                      ))}
+                    </div>
+                    
+                    <p className="text-slate-600 text-sm">
+                      Não feche esta página
+                    </p>
                   </motion.div>
                 )}
                 
-                {supabaseUiStep === 'done' && (
+                {supabaseUiStep === 'done' && !supabaseProvisioning && (
                   <motion.div key="supabase-done" variants={sceneVariants} initial="initial" animate="animate" exit="exit" transition={sceneTransition} className="text-center">
                     {supabaseResolving ? (
                       <>

@@ -2,6 +2,23 @@
 
 ## 28/12/2025
 
+- **Installer Wizard — Experiência Cinematográfica de Provisioning**:
+  - **Pula tela 'creating' quando automático**: Se org paga é detectada, vai direto para a tela de provisioning sem mostrar tela intermediária com senha do DB
+  - **Mensagens rotativas estilo Interstellar**: A cada 12s, uma nova mensagem aparece com animação fade:
+    - "Calibrando coordenadas" → "Estabelecendo conexão" → "Construindo infraestrutura" → "Ativando sistemas" → "Sincronizando órbita" → "Verificando integridade" → "Preparando pouso"
+  - **Animação de radar/pulso central**: 
+    - 3 ondas expandindo infinitamente
+    - Anel externo rotacionando (dashed)
+    - Anel interno com glow pulsante
+    - Ícone de loading centralizado
+  - **Barra de progresso estilizada**:
+    - Gradiente animado (cyan → teal → cyan)
+    - Glow effect embaixo da barra
+    - Progresso baseado no tempo real (estimativa 100s)
+  - **Telemetria fake**: `SYS: 45%` | `NET: ONLINE` | `DB: COMING_UP` - piscando suavemente
+  - **Partículas flutuando**: 6 partículas subindo com fade in/out
+  - **Transições suaves**: AnimatePresence para trocar mensagens sem "pulo"
+
 - **Installer Wizard — Resiliência Total (Fase 2)**:
   - **Instalação Resumível**: estado da instalação é salvo em `localStorage` a cada etapa
     - Se o navegador fechar ou der erro, ao voltar aparece modal "Instalação em andamento"
