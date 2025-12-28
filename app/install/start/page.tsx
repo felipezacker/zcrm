@@ -271,11 +271,11 @@ export default function InstallStartPage() {
   
   // Auto-submit quando cola token
   useEffect(() => {
-    if (screen === 'vercel' && vercelToken.trim().length >= 24 && !isLoading) {
+    if (screen === 'vercel' && vercelToken.trim().length >= 24 && !isLoading && !error) {
       const handle = setTimeout(() => void handleVercelSubmit(), 800);
       return () => clearTimeout(handle);
     }
-  }, [vercelToken, screen, isLoading]);
+  }, [vercelToken, screen, isLoading, error]);
   
   useEffect(() => {
     if (screen === 'supabase' && supabaseToken.trim().startsWith('sbp_') && supabaseToken.trim().length >= 30) {
