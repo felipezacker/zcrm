@@ -346,7 +346,7 @@ export default function InstallWizardPage() {
   
   useEffect(() => {
     if (!supabaseAccessToken.trim() || !supabaseUrl.trim()) return;
-    if (supabaseResolving || supabaseResolvedOk) return;
+    if (supabaseResolving || supabaseResolvedOk || supabaseResolveError) return;
     // Não dispara resolve enquanto o projeto ainda está provisionando
     if (supabaseProvisioning) return;
     
@@ -354,7 +354,7 @@ export default function InstallWizardPage() {
     resolveTimerRef.current = setTimeout(() => void resolveKeys('auto'), 600);
     
     return () => { if (resolveTimerRef.current) clearTimeout(resolveTimerRef.current); };
-  }, [supabaseAccessToken, supabaseUrl, supabaseResolving, supabaseResolvedOk, supabaseProvisioning]);
+  }, [supabaseAccessToken, supabaseUrl, supabaseResolving, supabaseResolvedOk, supabaseResolveError, supabaseProvisioning]);
   
   // API Functions
   const loadOrgsAndDecide = async () => {
