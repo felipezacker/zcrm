@@ -133,6 +133,7 @@ export default function InstallWizardPage() {
   const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
   const [supabaseServiceKey, setSupabaseServiceKey] = useState('');
   const [supabaseDbUrl, setSupabaseDbUrl] = useState('');
+  const [supabaseRegion, setSupabaseRegion] = useState<string | null>(null);
   const [supabaseProjectRef, setSupabaseProjectRef] = useState('');
   const [supabaseDeployEdgeFunctions] = useState(true);
   const [supabaseCreateDbPass, setSupabaseCreateDbPass] = useState('');
@@ -143,8 +144,6 @@ export default function InstallWizardPage() {
   const [supabaseOrgsError, setSupabaseOrgsError] = useState<string | null>(null);
   const [supabaseCreating, setSupabaseCreating] = useState(false);
   const [supabaseCreateError, setSupabaseCreateError] = useState<string | null>(null);
-  const [conflictingProject, setConflictingProject] = useState<{ref: string; name: string; status: string; region?: string} | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [supabaseProvisioning, setSupabaseProvisioning] = useState(false);
   const [supabaseProvisioningStatus, setSupabaseProvisioningStatus] = useState<string | null>(null);
   const [supabaseResolving, setSupabaseResolving] = useState(false);
@@ -248,6 +247,14 @@ export default function InstallWizardPage() {
   // Estado persistente para instalação resumível
   const [installState, setInstallState] = useState<InstallState | null>(null);
   const [showResumeModal, setShowResumeModal] = useState(false);
+  const installStateRef = useRef<InstallState | null>(null);
+
+  const commitInstallState = (next: InstallState | null) => {
+    setInstallState(next);
+    installStateRef.current = next;
+    if (next) saveInstallState(next);
+  };
+
   
   // Parallax
   const mx = useMotionValue(0);
@@ -370,7 +377,7 @@ export default function InstallWizardPage() {
           console.warn('[wizard] Ignoring empty resumable installState (0%). Clearing.');
           clearInstallState();
         } else {
-          setInstallState(savedInstallState);
+          commitInstallState(savedInstallState);
         setShowResumeModal(true);
         console.log('[wizard] Found resumable installation:', summary);
         }
@@ -381,6 +388,10 @@ export default function InstallWizardPage() {
       router.replace('/install/start');
     }
   }, [router]);
+
+  useEffect(() => {
+    installStateRef.current = installState;
+  }, [installState]);
 
   useEffect(() => {
     if (installerToken.trim()) localStorage.setItem(STORAGE_INSTALLER_TOKEN, installerToken.trim());
@@ -395,6 +406,7 @@ export default function InstallWizardPage() {
     setSupabaseOrgsError(null);
     setSupabaseUrl('');
     setSupabaseProjectRef('');
+    setSupabaseRegion(null);
     setSupabaseResolvedOk(false);
     setSupabaseResolveError(null);
     setSupabaseUiStep('pat');
@@ -822,8 +834,7 @@ export default function InstallWizardPage() {
       supabaseUrl: supabaseUrl.trim() || undefined,
       adminEmail: adminEmail.trim(),
     });
-    setInstallState(newInstallState);
-    saveInstallState(newInstallState);
+    commitInstallState(newInstallState);
 
     try {
       // 🧠 Health Check Inteligente - detecta o que pode ser pulado
@@ -930,7 +941,13 @@ export default function InstallWizardPage() {
       let buffer = '';
       
       while (true) {
-        const { done, value } = await reader.read();
+        let chunk;
+        try {
+          chunk = await reader.read();
+        } catch (readErr) {
+          throw new Error('Conexão instável durante a instalação. Recarregue a página e retome a partir do ponto salvo.');
+        }
+        const { done, value } = chunk;
         if (done) break;
         
         buffer += decoder.decode(value, { stream: true });
@@ -945,13 +962,21 @@ export default function InstallWizardPage() {
             if (event.type === 'phase') {
               // 🎮 Salva checkpoint a cada fase
               const stepId = event.phase ? PHASE_TO_STEP[event.phase] : null;
-              if (stepId && installState) {
-                const updated = updateStepStatus(installState, stepId, 'running');
-                setInstallState(updated);
+              const current = installStateRef.current;
+              if (stepId && current) {
+                const updated = updateStepStatus(current, stepId, 'running');
+                commitInstallState(updated);
               }
               setCineMessage(event.title || 'Processando...');
               setCineSubtitle(event.subtitle || '');
               setCineProgress(event.progress || 0);
+            } else if (event.type === 'step_complete') {
+              const stepId = String(event.stepId || '');
+              const current = installStateRef.current;
+              if (stepId && current) {
+                const updated = updateStepStatus(current, stepId, 'completed');
+                commitInstallState(updated);
+              }
             } else if (event.type === 'retry') {
               // Show retry feedback without interrupting flow
               const retryMsg = `Tentativa ${event.retryCount}/${event.maxRetries}...`;
@@ -970,7 +995,7 @@ export default function InstallWizardPage() {
               setResult({ ok: true, steps: [] });
               // 🎮 Limpa o save game - instalação completa!
               clearInstallState();
-              setInstallState(null);
+              commitInstallState(null);
             } else if (event.type === 'error') {
               throw new Error(event.error || 'Erro durante a instalação');
             }
@@ -986,9 +1011,10 @@ export default function InstallWizardPage() {
       setCineMessage('Falha na missão');
       setCineSubtitle(message);
       // 🎮 Salva o erro no save game para retry posterior
-      if (installState) {
-        const errorState = { ...installState, error: message };
-        saveInstallState(errorState);
+      const current = installStateRef.current;
+      if (current) {
+        const errorState = { ...current, error: message };
+        commitInstallState(errorState);
       }
     } finally {
       setInstalling(false);
@@ -1091,7 +1117,7 @@ export default function InstallWizardPage() {
                   </motion.div>
                 )}
                 
-                {supabaseUiStep === 'needspace' && !conflictingProject && (
+                {supabaseUiStep === 'needspace' && (
                   <motion.div key="supabase-needspace" variants={sceneVariants} initial="initial" animate="animate" exit="exit" transition={sceneTransition}>
                     <div className="text-center mb-6">
                       <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-6">
@@ -1136,218 +1162,6 @@ export default function InstallWizardPage() {
                     )}
 
                     {supabaseCreateError && <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-red-400 text-sm">{supabaseCreateError}</div>}
-                  </motion.div>
-                )}
-                
-                {/* Modal de confirmação de deleção */}
-                {showDeleteConfirm && conflictingProject && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-                    onClick={() => setShowDeleteConfirm(false)}
-                  >
-                    <motion.div
-                      initial={{ scale: 0.9, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.9, opacity: 0 }}
-                      className="bg-slate-900 border border-red-500/30 rounded-2xl p-8 max-w-md w-full shadow-2xl"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="text-center mb-6">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 mb-4">
-                          <AlertCircle className="w-8 h-8 text-red-400" />
-                        </div>
-                        <h2 className="text-2xl font-bold text-white mb-2">Deletar projeto?</h2>
-                        <p className="text-slate-400">
-                          O projeto <span className="text-white font-medium">"{conflictingProject.name}"</span> será removido permanentemente.
-                        </p>
-                      </div>
-                      
-                      <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 mb-6">
-                        <p className="text-red-400 text-sm text-center">
-                          ⚠️ Esta ação não pode ser desfeita
-                        </p>
-                      </div>
-                      
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => setShowDeleteConfirm(false)}
-                          className="flex-1 px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium transition-all"
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          onClick={async () => {
-                            setShowDeleteConfirm(false);
-                            setSupabaseCreateError(null);
-                            
-                            try {
-                              const res = await fetch('/api/installer/supabase/delete-project', {
-                                method: 'POST',
-                                headers: { 'content-type': 'application/json' },
-                                body: JSON.stringify({
-                                  installerToken: installerToken.trim() || undefined,
-                                  accessToken: supabaseAccessToken.trim(),
-                                  projectRef: conflictingProject.ref,
-                                  confirmRef: conflictingProject.ref,
-                                }),
-                              });
-                              
-                              const data = await res.json();
-                              if (!res.ok) throw new Error(data?.error || 'Falha ao deletar projeto');
-                              
-                              // Clear conflict and retry creation
-                              setConflictingProject(null);
-                              setSupabaseCreateError(null);
-                              void decideAndCreate(supabaseOrgs, supabasePreflight!);
-                            } catch (err) {
-                              setSupabaseCreateError(err instanceof Error ? err.message : 'Erro ao deletar');
-                            }
-                          }}
-                          className="flex-1 px-6 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-medium transition-all"
-                        >
-                          Sim, deletar
-                        </button>
-                      </div>
-                    </motion.div>
-                  </motion.div>
-                )}
-                
-                {/* Modal de conflito - projeto já existe */}
-                {supabaseUiStep === 'needspace' && conflictingProject && (
-                  <motion.div key="supabase-conflict" variants={sceneVariants} initial="initial" animate="animate" exit="exit" transition={sceneTransition}>
-                    <div className="text-center mb-6">
-                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-6">
-                        <AlertCircle className="w-8 h-8 text-amber-400" />
-                      </div>
-                      <h1 className="text-2xl font-bold text-white mb-2">Projeto já existe</h1>
-                      <p className="text-slate-400">
-                        O projeto <span className="text-white font-medium">{conflictingProject.name}</span> já existe.
-                      </p>
-                    </div>
-                    
-                    {conflictingProject.status?.toUpperCase().includes('PAUSING') ? (
-                      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-                        <div className="flex items-center gap-3 text-amber-400">
-                          <Loader2 className="w-5 h-5 animate-spin shrink-0" />
-                          <p className="text-sm">
-                            O projeto está sendo pausado. Aguarde alguns segundos...
-                          </p>
-                        </div>
-
-                        {supabaseCreateError && !pausePolling && (
-                          <div className="mt-3 rounded-lg bg-red-500/10 border border-red-500/20 p-3">
-                            <div className="text-red-300 text-sm mb-2">{supabaseCreateError}</div>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  setSupabaseCreateError(null);
-                                  setPausePolling(true);
-                                  const { finalStatus, paused } = await pollProjectStatus(conflictingProject.ref, 'pausing');
-                                  setConflictingProject({ ...conflictingProject, status: paused ? 'INACTIVE' : finalStatus });
-                                } catch (err) {
-                                  setSupabaseCreateError(err instanceof Error ? err.message : 'Erro ao verificar');
-                                } finally {
-                                  setPausePolling(false);
-                                }
-                              }}
-                              className="w-full px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-medium transition-all"
-                            >
-                              Verificar de novo
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-slate-400 text-center mb-6">
-                          Escolha uma das opções abaixo para continuar:
-                        </p>
-                        
-                        <div className="space-y-3">
-                      {(conflictingProject.status?.toUpperCase() === 'ACTIVE_HEALTHY' || conflictingProject.status?.toUpperCase() === 'ACTIVE') && (
-                        <button
-                          onClick={async () => {
-                            const prevStatus = conflictingProject.status;
-                            try {
-                              // Força UI de espera (banner) imediatamente
-                              setConflictingProject({ ...conflictingProject, status: 'PAUSING' });
-                              setSupabasePausingRef(conflictingProject.ref);
-                              setPausePolling(true);
-                              setSupabaseCreateError(null);
-                              
-                              // 1. Chama API para pausar
-                              const res = await fetch('/api/installer/supabase/pause-project', {
-                                method: 'POST',
-                                headers: { 'content-type': 'application/json' },
-                                body: JSON.stringify({ 
-                                  installerToken: installerToken.trim() || undefined, 
-                                  accessToken: supabaseAccessToken.trim(), 
-                                  projectRef: conflictingProject.ref 
-                                }),
-                              });
-                              const data = await res.json().catch(() => null);
-                              if (!res.ok) throw new Error(data?.error || 'Falha ao pausar');
-                              
-                              // 2. Aguarda projeto pausar (polling)
-                              const { paused } = await pollProjectStatus(conflictingProject.ref, 'pause');
-                              
-                              // 3. Atualiza o status do conflictingProject
-                              setConflictingProject({ ...conflictingProject, status: paused ? 'INACTIVE' : conflictingProject.status });
-                              
-                            } catch (err) {
-                              setSupabaseCreateError(err instanceof Error ? err.message : 'Erro ao pausar');
-                              setConflictingProject({ ...conflictingProject, status: prevStatus });
-                            } finally {
-                              setSupabasePausingRef(null);
-                              setPausePolling(false);
-                            }
-                          }}
-                          disabled={supabasePausingRef === conflictingProject.ref || pausePolling}
-                          className="w-full px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                          {(supabasePausingRef === conflictingProject.ref || pausePolling) ? (
-                            <><Loader2 className="w-5 h-5 animate-spin" /> {pausePolling ? 'Aguardando pausar...' : 'Pausando...'}</>
-                          ) : (
-                            <><Pause className="w-5 h-5" /> Pausar projeto</>
-                          )}
-                        </button>
-                      )}
-                      
-                      <button
-                        onClick={() => {
-                          setSupabaseCreateError(null);
-                          setShowDeleteConfirm(true);
-                        }}
-                        disabled={pausePolling}
-                        className="w-full px-6 py-3 rounded-xl bg-red-500/10 disabled:opacity-50 hover:bg-red-500/20 border border-red-500/20 text-red-400 font-medium transition-all flex items-center justify-center gap-2"
-                      >
-                        <AlertCircle className="w-5 h-5" /> Deletar projeto
-                      </button>
-                      
-                      <button
-                        onClick={() => {
-                          setConflictingProject(null);
-                          setSupabaseCreateError(null);
-                          setSupabaseUiStep('pat');
-                        }}
-                        disabled={pausePolling}
-                        className="w-full px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium transition-all disabled:opacity-50"
-                      >
-                        Usar outro nome
-                      </button>
-                    </div>
-                    
-                      </>
-                    )}
-                    
-                    {supabaseCreateError && (
-                      <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-red-400 text-sm">
-                        {supabaseCreateError}
-                      </div>
-                    )}
                   </motion.div>
                 )}
                 

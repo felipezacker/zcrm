@@ -674,3 +674,12 @@
 - **Bug Fix/UX**: Ao clicar em **Pausar** na tela "Precisamos de espaço", agora a UI troca imediatamente para um **banner global** de "pausando" e esconde a lista/ações
   - Antes: só mostrava spinner no botão e podia parecer que nada aconteceu
   - Agora: feedback claro e consistente durante todo o polling até liberar slot
+
+### 29/12/2025 — Auditoria do Wizard: estados consistentes + save-game confiável
+
+- **Bug Fix**: Removidos caminhos legados de **conflito/deleção** no wizard (código morto que podia gerar inconsistências de UI/estado)
+- **Bug Fix**: Save-game agora atualiza corretamente durante o SSE (evita closure stale)
+  - Introduzido `installStateRef` + `commitInstallState`
+  - Suporte a evento `step_complete` para marcar etapas como `completed`
+- **Resiliência**: `reader.read()` agora tem erro amigável para oscilação de rede, mantendo estado salvo para retomar
+- **Confiabilidade DB**: `buildDbUrl` agora usa região real do projeto (via `/project-status`) para escolher o pooler correto (`aws-0-REGION.pooler.supabase.com`)
