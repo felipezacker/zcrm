@@ -2,6 +2,10 @@
 
 ## 28/12/2025
 
+- **Installer Wizard — Banner de pausa (fallback)**:
+  - **Correção**: na tela "Precisamos de espaço", o banner amarelo agora aparece quando `pausePolling` **ou** `supabasePausingRef` estiverem ativos (garante banner mesmo se o estado global falhar).
+  - **Arquivo**: `app/install/wizard/page.tsx`
+
 - **Installer Wizard — Needspace com banner de pausa**:
   - **UX**: na tela "Precisamos de espaço", ao clicar em **Pausar**, o wizard agora mostra o mesmo banner de espera (estilo modal de conflito) e esconde a lista até a pausa concluir.
   - **Arquivo**: `app/install/wizard/page.tsx`
