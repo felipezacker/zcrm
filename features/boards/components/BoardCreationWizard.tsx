@@ -10,7 +10,7 @@ import {
 } from '@/lib/ai/tasksClient';
 import { Board, BoardStage } from '@/types';
 import { AIProcessingModal, ProcessingStep, SimulatorPhase } from './Modals/AIProcessingModal';
-import { fetchRegistry, fetchTemplateJourney } from '@/services/registryService';
+import { fetchRegistry, fetchTemplateJourney } from '@/lib/templates/registryService';
 import { RegistryIndex, RegistryTemplate, JourneyDefinition } from '@/types';
 import { OFFICIAL_JOURNEYS } from '@/lib/templates/journey-templates';
 import { MODAL_OVERLAY_CLASS } from '@/components/ui/modalStyles';
