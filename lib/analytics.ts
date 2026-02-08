@@ -1,4 +1,4 @@
-import { Metric } from 'web-vitals';
+import { Metric, onCLS, onFCP, onLCP, onTTFB, onINP } from 'web-vitals';
 import { logger } from './logger';
 
 export const PERFORMANCE_BASELINES = {
@@ -76,15 +76,11 @@ const sendMetricToAnalytics = async (endpoint: string, metric: Metric, rating: P
 };
 
 export const initializeAnalytics = () => {
-  import('web-vitals').then(({ getCLS, getFCP, getLCP, getTTFB, getINP }) => {
-    getCLS(reportWebVitals);
-    getFCP(reportWebVitals);
-    getLCP(reportWebVitals);
-    getTTFB(reportWebVitals);
-    getINP(reportWebVitals);
-  }).catch((error) => {
-    logger.error({ error }, 'Failed to initialize Web Vitals');
-  });
+  onCLS(reportWebVitals);
+  onFCP(reportWebVitals);
+  onLCP(reportWebVitals);
+  onTTFB(reportWebVitals);
+  onINP(reportWebVitals);
 };
 
 export const measurePerformance = async <T>(
