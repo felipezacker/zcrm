@@ -12,47 +12,34 @@ describe('Logger', () => {
       expect(id1).not.toBe(id2);
     });
 
-    it('should generate IDs with timestamp and random suffix', () => {
+    it('should generate valid UUID format', () => {
       const id = generateCorrelationId();
-      const parts = id.split('-');
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-      expect(parts.length).toBe(2);
-      expect(parts[0]).toMatch(/^\d+$/); // timestamp
-      expect(parts[1]).toMatch(/^[a-z0-9]+$/); // random suffix
+      expect(id).toMatch(uuidRegex);
     });
   });
 
   describe('redactSensitiveData', () => {
     it('should redact password fields', () => {
-      const data = {
-        username: 'john',
-        password: 'secret123',
-      };
-
-      const redacted = redactSensitiveData(data);
+      const data = { username: 'john', password: 'secret123' };
+      const redacted = redactSensitiveData(data) as Record<string, unknown>;
 
       expect(redacted.username).toBe('john');
       expect(redacted.password).toBe('[REDACTED]');
     });
 
     it('should redact token fields', () => {
-      const data = {
-        access_token: 'abc123',
-        refresh_token: 'xyz789',
-      };
-
-      const redacted = redactSensitiveData(data);
+      const data = { access_token: 'abc123', refresh_token: 'xyz789' };
+      const redacted = redactSensitiveData(data) as Record<string, unknown>;
 
       expect(redacted.access_token).toBe('[REDACTED]');
       expect(redacted.refresh_token).toBe('[REDACTED]');
     });
 
     it('should redact authorization headers', () => {
-      const data = {
-        authorization: 'Bearer token123',
-      };
-
-      const redacted = redactSensitiveData(data);
+      const data = { authorization: 'Bearer token123' };
+      const redacted = redactSensitiveData(data) as Record<string, unknown>;
 
       expect(redacted.authorization).toBe('[REDACTED]');
     });
@@ -61,14 +48,10 @@ describe('Logger', () => {
       const data = {
         user: {
           name: 'john',
-          credentials: {
-            password: 'secret',
-            api_key: 'key123',
-          },
+          credentials: { password: 'secret', api_key: 'key123' },
         },
       };
-
-      const redacted = redactSensitiveData(data);
+      const redacted = redactSensitiveData(data) as any;
 
       expect(redacted.user.name).toBe('john');
       expect(redacted.user.credentials.password).toBe('[REDACTED]');
@@ -76,15 +59,26 @@ describe('Logger', () => {
     });
 
     it('should handle arrays', () => {
-      const data = [
-        { password: 'secret' },
-        { api_key: 'key' },
-      ];
-
-      const redacted = redactSensitiveData(data);
+      const data = [{ password: 'secret' }, { api_key: 'key' }];
+      const redacted = redactSensitiveData(data) as any[];
 
       expect(redacted[0].password).toBe('[REDACTED]');
       expect(redacted[1].api_key).toBe('[REDACTED]');
+    });
+
+    it('should stop at max depth to prevent stack overflow', () => {
+      const deep: any = { a: { b: { c: { d: { e: { f: { password: 'secret' } } } } } } };
+      const redacted = redactSensitiveData(deep) as any;
+
+      // Should not throw, depth limit prevents infinite recursion
+      expect(redacted).toBeDefined();
+    });
+
+    it('should handle null and primitives safely', () => {
+      expect(redactSensitiveData(null)).toBeNull();
+      expect(redactSensitiveData(undefined)).toBeUndefined();
+      expect(redactSensitiveData('string')).toBe('string');
+      expect(redactSensitiveData(42)).toBe(42);
     });
   });
 
@@ -114,13 +108,13 @@ describe('Logger', () => {
 
       const serialized = serializeRequest(req);
 
-      expect(serialized.headers.authorization).toBe('[REDACTED]');
-      expect(serialized.headers['content-type']).toBe('application/json');
+      expect((serialized.headers as any).authorization).toBe('[REDACTED]');
+      expect((serialized.headers as any)['content-type']).toBe('application/json');
     });
   });
 
   describe('logger instance', () => {
-    it('should have correct log levels', () => {
+    it('should have correct log level methods', () => {
       expect(logger.level).toBeDefined();
       expect(typeof logger.info).toBe('function');
       expect(typeof logger.error).toBe('function');

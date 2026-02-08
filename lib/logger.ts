@@ -1,4 +1,6 @@
 import pino from 'pino';
+import { randomUUID } from 'crypto';
+import { redactSensitiveData } from './utils/redact';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -18,49 +20,19 @@ export const logger = pino({
   },
 });
 
-// Request correlation ID tracking
 export const generateCorrelationId = (): string => {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return randomUUID();
 };
 
-// Sensitive data redaction
-const SENSITIVE_PATTERNS = [
-  'password',
-  'token',
-  'api_key',
-  'secret',
-  'authorization',
-  'cookie',
-  'session',
-];
+export { redactSensitiveData };
 
-export const redactSensitiveData = (obj: any): any => {
-  if (!obj || typeof obj !== 'object') return obj;
-
-  const redacted = Array.isArray(obj) ? [...obj] : { ...obj };
-
-  for (const key in redacted) {
-    const lowerKey = key.toLowerCase();
-    const isSensitive = SENSITIVE_PATTERNS.some(pattern => lowerKey.includes(pattern));
-
-    if (isSensitive) {
-      redacted[key] = '[REDACTED]';
-    } else if (typeof redacted[key] === 'object') {
-      redacted[key] = redactSensitiveData(redacted[key]);
-    }
-  }
-
-  return redacted;
-};
-
-// Serialize request/response for logging
-export const serializeRequest = (req: any) => ({
+export const serializeRequest = (req: { method?: string; url?: string; headers?: Record<string, unknown> }) => ({
   method: req.method,
   url: req.url,
-  headers: redactSensitiveData(req.headers),
+  headers: redactSensitiveData(req.headers || {}),
 });
 
-export const serializeResponse = (res: any) => ({
+export const serializeResponse = (res: { statusCode?: number; getHeaders?: () => Record<string, unknown> }) => ({
   statusCode: res.statusCode,
   headers: redactSensitiveData(res.getHeaders?.() || {}),
 });

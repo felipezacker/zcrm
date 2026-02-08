@@ -1,44 +1,48 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import { logger, generateCorrelationId, serializeRequest, redactSensitiveData } from '../logger';
+import { NextRequest, NextResponse } from 'next/server';
+import { logger, generateCorrelationId } from '../logger';
+import { redactSensitiveData } from '../utils/redact';
 
-export const withLogging = (handler: any) => {
-  return async (req: NextApiRequest, res: NextApiResponse) => {
+const isDev = process.env.NODE_ENV === 'development';
+
+/**
+ * Logging wrapper for Next.js App Router Route Handlers.
+ * Usage: export const GET = withLogging(async (req) => { ... });
+ */
+export const withLogging = (
+  handler: (req: NextRequest, context?: unknown) => Promise<NextResponse>
+) => {
+  return async (req: NextRequest, context?: unknown): Promise<NextResponse> => {
     const correlationId = generateCorrelationId();
     const startTime = Date.now();
 
-    // Store correlation ID in request for later use
-    (req as any).correlationId = correlationId;
-
-    // Log incoming request
     logger.info(
       {
         correlationId,
-        ...serializeRequest(req),
+        method: req.method,
+        url: req.nextUrl.pathname,
+        search: req.nextUrl.search,
+        headers: redactSensitiveData(Object.fromEntries(req.headers)),
       },
       'Incoming request'
     );
 
-    // Capture response
-    const originalJson = res.json.bind(res);
-    res.json = function (body: any) {
+    try {
+      const response = await handler(req, context);
       const duration = Date.now() - startTime;
 
-      // Log response
       logger.info(
         {
           correlationId,
-          statusCode: res.statusCode,
+          statusCode: response.status,
           duration,
-          body: redactSensitiveData(body),
         },
         'Request completed'
       );
 
-      return originalJson(body);
-    };
+      // Add correlation ID to response headers for tracing
+      response.headers.set('x-correlation-id', correlationId);
 
-    try {
-      return await handler(req, res);
+      return response;
     } catch (error) {
       const duration = Date.now() - startTime;
 
@@ -52,7 +56,10 @@ export const withLogging = (handler: any) => {
         'Request failed'
       );
 
-      throw error;
+      return NextResponse.json(
+        { error: 'Internal Server Error' },
+        { status: 500, headers: { 'x-correlation-id': correlationId } }
+      );
     }
   };
 };
