@@ -38,7 +38,7 @@ export function Sheet({ isOpen, onClose, children, ariaLabel, className }: Sheet
         <FocusTrap active={isOpen} onEscape={handleEscape} returnFocus={true}>
           <motion.div
             className={cn(
-              'fixed inset-0 z-[9999] bg-slate-950/70 backdrop-blur-sm',
+              'fixed inset-0 z-[9999] bg-neutral-900/70 backdrop-blur-sm',
               // keep consistent with desktop sidebar behavior
               'md:left-[var(--app-sidebar-width,0px)]'
             )}
@@ -54,8 +54,8 @@ export function Sheet({ isOpen, onClose, children, ariaLabel, className }: Sheet
               aria-label={ariaLabel}
               className={cn(
                 'absolute left-0 right-0 bottom-0 mx-auto w-full',
-                'rounded-t-2xl bg-white dark:bg-dark-card',
-                'border border-slate-200 dark:border-white/10',
+                'rounded-t-2xl bg-surface',
+                'border border-divider',
                 'shadow-2xl overflow-hidden',
                 // safe area
                 'pb-[var(--app-safe-area-bottom,0px)]',

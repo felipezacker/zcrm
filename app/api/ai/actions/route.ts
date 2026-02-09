@@ -171,11 +171,10 @@ export async function POST(req: Request) {
     return json<AIActionResponse>({ error: 'Profile not found' }, 404);
   }
 
+  // Use RPC for decrypted AI keys (keys are encrypted at-rest)
   const { data: orgSettings, error: orgError } = await supabase
-    .from('organization_settings')
-    .select('ai_enabled, ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key')
-    .eq('organization_id', profile.organization_id)
-    .single();
+    .rpc('get_org_ai_keys', { p_org_id: profile.organization_id })
+    .maybeSingle() as { data: { ai_provider: string; ai_model: string; ai_google_key: string | null; ai_openai_key: string | null; ai_anthropic_key: string | null; ai_enabled: boolean } | null; error: any };
 
   const aiEnabled = typeof (orgSettings as any)?.ai_enabled === 'boolean' ? (orgSettings as any).ai_enabled : true;
   if (!aiEnabled) {
@@ -224,7 +223,7 @@ export async function POST(req: Request) {
     return json<AIActionResponse>({ error: 'AI consent required', consentType: 'AI_CONSENT' }, 200);
   }
 
-  const modelId = orgSettings.ai_model || '';
+  const modelId = orgSettings?.ai_model || '';
   const model = getModel(provider, apiKey, modelId);
 
   try {

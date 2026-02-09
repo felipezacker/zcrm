@@ -1,3 +1,6 @@
+// For more info, see https://github.com/storybookjs/eslint-plugin-storybook#configuration-flat-config-format
+import storybook from "eslint-plugin-storybook";
+
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
@@ -22,7 +25,6 @@ const eslintConfig = defineConfig([
     // Build/runtime artifacts
     "public/sw.js",
   ]),
-
   // Scripts are CommonJS by design; allow require() there.
   {
     files: ["scripts/**/*.cjs"],
@@ -30,7 +32,27 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-require-imports": "off",
     },
   },
-
+  // .aios-core framework infrastructure uses CommonJS; allow require() there.
+  {
+    files: [".aios-core/**/*.js"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  // Templates are not executable code; ignore parsing errors
+  {
+    files: [".aios-core/product/templates/**", ".aios-core/development/templates/**"],
+    rules: {
+      "@next/next/no-assign-module-variable": "off",
+    },
+  },
+  // Template files have placeholder syntax that's not valid JavaScript
+  {
+    ignores: [
+      ".aios-core/product/templates/**/*.{js,tsx}",
+      ".aios-core/development/templates/**/*.{js,tsx}",
+    ],
+  },
   // Project-level rule tuning: keep lint useful, but avoid blocking on high-noise rules.
   {
     plugins: {
@@ -70,6 +92,7 @@ const eslintConfig = defineConfig([
       'react-hooks/exhaustive-deps': 'off',
     },
   },
+  ...storybook.configs["flat/recommended"]
 ]);
 
 export default eslintConfig;

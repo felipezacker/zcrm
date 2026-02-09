@@ -113,6 +113,18 @@ export const settingsService = {
         return this.createDefault();
       }
 
+      // Decrypt AI keys via RPC (keys are encrypted at-rest)
+      const { data: decryptedKeys } = await supabase
+        .rpc('get_user_ai_keys')
+        .maybeSingle() as { data: { ai_api_key: string | null; ai_google_key: string | null; ai_openai_key: string | null; ai_anthropic_key: string | null } | null };
+
+      if (decryptedKeys) {
+        data.ai_api_key = decryptedKeys.ai_api_key;
+        data.ai_google_key = decryptedKeys.ai_google_key;
+        data.ai_openai_key = decryptedKeys.ai_openai_key;
+        data.ai_anthropic_key = decryptedKeys.ai_anthropic_key;
+      }
+
       return { data: transformSettings(data as DbUserSettings), error: null };
     } catch (e) {
       return { data: null, error: e as Error };
@@ -247,29 +259,8 @@ export const lifecycleStagesService = {
 
   async create(stage: Omit<LifecycleStage, 'id' | 'order'>): Promise<{ data: LifecycleStage | null; error: Error | null }> {
     try {
-      // Get max order
-      const { data: existing } = await supabase
-        .from('lifecycle_stages')
-        .select('order')
-        .order('order', { ascending: false })
-        .limit(1);
-
-      const newOrder = existing && existing.length > 0 ? existing[0].order + 1 : 0;
-
-      const { data, error } = await supabase
-        .from('lifecycle_stages')
-        .insert({
-          id: crypto.randomUUID(),
-          name: stage.name,
-          color: stage.color,
-          order: newOrder,
-          is_default: stage.isDefault || false,
-        })
-        .select()
-        .single();
-
-      if (error) return { data: null, error };
-      return { data: transformLifecycleStage(data as DbLifecycleStage), error: null };
+      // Lifecycle stages are read-only for authenticated users (managed via admin/service role)
+      return { data: null, error: new Error('Lifecycle stages are managed by administrators only') };
     } catch (e) {
       return { data: null, error: e as Error };
     }
@@ -277,18 +268,8 @@ export const lifecycleStagesService = {
 
   async update(id: string, updates: Partial<LifecycleStage>): Promise<{ error: Error | null }> {
     try {
-      const dbUpdates: Partial<DbLifecycleStage> = {};
-
-      if (updates.name !== undefined) dbUpdates.name = updates.name;
-      if (updates.color !== undefined) dbUpdates.color = updates.color;
-      if (updates.order !== undefined) dbUpdates.order = updates.order;
-
-      const { error } = await supabase
-        .from('lifecycle_stages')
-        .update(dbUpdates)
-        .eq('id', id);
-
-      return { error };
+      // Lifecycle stages are read-only for authenticated users (managed via admin/service role)
+      return { error: new Error('Lifecycle stages are managed by administrators only') };
     } catch (e) {
       return { error: e as Error };
     }
@@ -296,23 +277,8 @@ export const lifecycleStagesService = {
 
   async delete(id: string): Promise<{ error: Error | null }> {
     try {
-      // Check if default
-      const { data: stage } = await supabase
-        .from('lifecycle_stages')
-        .select('is_default')
-        .eq('id', id)
-        .single();
-
-      if (stage?.is_default) {
-        return { error: new Error('Cannot delete default lifecycle stage') };
-      }
-
-      const { error } = await supabase
-        .from('lifecycle_stages')
-        .delete()
-        .eq('id', id);
-
-      return { error };
+      // Lifecycle stages are read-only for authenticated users (managed via admin/service role)
+      return { error: new Error('Lifecycle stages are managed by administrators only') };
     } catch (e) {
       return { error: e as Error };
     }
@@ -320,16 +286,8 @@ export const lifecycleStagesService = {
 
   async reorder(stages: LifecycleStage[]): Promise<{ error: Error | null }> {
     try {
-      // Update each stage's order
-      const updates = stages.map((stage, index) =>
-        supabase
-          .from('lifecycle_stages')
-          .update({ order: index })
-          .eq('id', stage.id)
-      );
-
-      await Promise.all(updates);
-      return { error: null };
+      // Lifecycle stages are read-only for authenticated users (managed via admin/service role)
+      return { error: new Error('Lifecycle stages are managed by administrators only') };
     } catch (e) {
       return { error: e as Error };
     }

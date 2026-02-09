@@ -7,7 +7,7 @@ import { InstallBanner } from '@/components/pwa/InstallBanner'
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: 'NossoCRM',
+  title: 'ZmobCRM',
   description: 'CRM Inteligente para Gestão de Vendas',
 }
 
@@ -28,7 +28,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className="dark" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased bg-[var(--color-bg)] text-[var(--color-text-primary)]`}>
+      <head>
+        {/* Design System Tokens - Phase D */}
+        <link rel="stylesheet" href="/design-tokens.css" />
+      </head>
+      <body className={`${inter.variable} font-sans antialiased bg-[var(--color-background)] text-[var(--color-foreground)]`}>
         <ServiceWorkerRegister />
         <InstallBanner />
         {children}

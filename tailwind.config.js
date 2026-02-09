@@ -1,4 +1,8 @@
 /** @type {import('tailwindcss').Config} */
+
+// Import design tokens from UX Designer (Phase D - Design System)
+const tokens = require('./squads/design-system/tokens.tailwind.js');
+
 const config = {
     content: [
         "./app/**/*.{js,ts,jsx,tsx}",
@@ -14,24 +18,26 @@ const config = {
     darkMode: 'class',
     theme: {
         extend: {
-            fontFamily: {
-                sans: ['var(--font-inter)', 'Inter', 'sans-serif'],
-                display: ['Space Grotesk', 'sans-serif'],
-                serif: ['Cinzel', 'serif'],
+            // Spread design tokens from UX Designer
+            ...tokens,
+            // Mobile-first breakpoints (Phase D)
+            screens: {
+                'xs': '320px',    // iPhone SE
+                'sm': '375px',    // Small phones
+                'md': '640px',    // Large phones
+                'lg': '1024px',   // Tablet
+                'xl': '1280px',   // Laptop
+                '2xl': '1536px',  // Desktop
             },
+            // Override fontFamily to preserve existing Inter variable
+            fontFamily: {
+                sans: ['var(--font-inter)', 'var(--font-sans)', 'Inter', 'sans-serif'],
+                display: ['Space Grotesk', 'var(--font-display)', 'sans-serif'],
+                serif: ['Cinzel', 'var(--font-serif)', 'serif'],
+            },
+            // Keep existing dark colors for backwards compatibility
             colors: {
-                primary: {
-                    50: '#f0f9ff',
-                    100: '#e0f2fe',
-                    200: '#bae6fd',
-                    300: '#7dd3fc',
-                    400: '#38bdf8',
-                    500: '#0ea5e9',
-                    600: '#0284c7',
-                    700: '#0369a1',
-                    800: '#075985',
-                    900: '#0c4a6e',
-                },
+                ...tokens.colors,
                 dark: {
                     bg: '#020617',
                     card: '#0f172a',

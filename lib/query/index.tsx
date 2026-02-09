@@ -1,6 +1,6 @@
 /**
- * @fileoverview Configuração do TanStack Query para o NossoCRM.
- * 
+ * @fileoverview Configuração do TanStack Query para o ZmobCRM.
+ *
  * Este módulo centraliza toda a configuração de gerenciamento de estado do servidor:
  * - Cliente e provider do TanStack Query
  * - Query keys centralizadas para todas as entidades
@@ -111,8 +111,8 @@ const handleMutationError = (error: unknown, _variables: unknown, _context: unkn
 // ============ QUERY CLIENT ============
 
 /**
- * Cliente TanStack Query configurado para o NossoCRM.
- * 
+ * Cliente TanStack Query configurado para o ZmobCRM.
+ *
  * Configurações:
  * - Stale time: 5 minutos
  * - Cache time: 30 minutos
