@@ -31,54 +31,75 @@ export enum ErrorCategory {
 
 /**
  * Categorize error based on message and type
+ * Note: Order matters - more specific patterns first
  */
 export function categorizeError(error: Error): ErrorCategory {
   const message = error.message.toLowerCase();
+  const stack = (error.stack || '').toLowerCase();
 
+  // DATABASE - most specific patterns first
   if (
-    message.includes('db') ||
     message.includes('database') ||
-    message.includes('sql') ||
-    message.includes('postgres')
+    message.includes('postgres') ||
+    message.includes('sql error') ||
+    stack.includes('database')
   ) {
     return ErrorCategory.DATABASE;
   }
+  if (message.includes('db') && !message.includes('invalid')) {
+    return ErrorCategory.DATABASE;
+  }
 
+  // AUTHENTICATION - specific token/auth patterns
+  if (
+    message.includes('invalid token') ||
+    message.includes('token expired') ||
+    message.includes('unauthorized') ||
+    message.includes('401')
+  ) {
+    return ErrorCategory.AUTHENTICATION;
+  }
+  if (message.includes('auth') && !message.includes('authorization')) {
+    return ErrorCategory.AUTHENTICATION;
+  }
+
+  // AUTHORIZATION - permission-specific patterns
+  if (
+    message.includes('forbidden') ||
+    message.includes('permission denied') ||
+    message.includes('403') ||
+    message.includes('unauthorized access')
+  ) {
+    return ErrorCategory.AUTHORIZATION;
+  }
+  if (message.includes('permission') || message.includes('access denied')) {
+    return ErrorCategory.AUTHORIZATION;
+  }
+
+  // NETWORK - connectivity-specific patterns
   if (
     message.includes('network') ||
-    message.includes('fetch') ||
     message.includes('timeout') ||
-    message.includes('connection refused')
+    message.includes('connection refused') ||
+    message.includes('fetch')
   ) {
     return ErrorCategory.NETWORK;
   }
 
+  // VALIDATION - input validation patterns
   if (
-    message.includes('auth') ||
-    message.includes('unauthorized') ||
-    message.includes('401') ||
-    message.includes('invalid token')
-  ) {
-    return ErrorCategory.AUTHENTICATION;
-  }
-
-  if (
-    message.includes('forbidden') ||
-    message.includes('permission') ||
-    message.includes('403')
-  ) {
-    return ErrorCategory.AUTHORIZATION;
-  }
-
-  if (
-    message.includes('validation') ||
-    message.includes('invalid') ||
-    message.includes('required')
+    message.includes('validation error') ||
+    message.includes('required field') ||
+    message.includes('invalid value')
   ) {
     return ErrorCategory.VALIDATION;
   }
+  if (message.includes('validation') || message.includes('required')) {
+    return ErrorCategory.VALIDATION;
+  }
 
-  if (message.includes('business') || message.includes('rule')) {
+  // BUSINESS_LOGIC - business rule patterns
+  if (message.includes('business') || message.includes('rule violation')) {
     return ErrorCategory.BUSINESS_LOGIC;
   }
 

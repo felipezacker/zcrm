@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   PerformanceMonitor,
   PERFORMANCE_THRESHOLDS,
   ALERT_CONFIG,
   performanceMonitor,
+  cleanupPerformanceMonitoring,
 } from './performance-monitoring';
 import { logger } from '../logger';
 
@@ -34,6 +35,10 @@ describe('Performance Monitoring', () => {
   beforeEach(() => {
     monitor = new PerformanceMonitor();
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanupPerformanceMonitoring();
   });
 
   describe('PERFORMANCE_THRESHOLDS', () => {

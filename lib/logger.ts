@@ -6,11 +6,20 @@ import { initializeDataDogIntegration } from './integrations/datadog-logger';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// Initialize logger with configuration and transport
-export const logger = pino(
-  getLoggerConfig(),
-  pino.transport(getLogTransport())
-);
+// Lazy initialization of logger - only create transport when first accessed
+let _logger: pino.Logger | null = null;
+
+export const logger = new Proxy({} as pino.Logger, {
+  get(target: any, prop: PropertyKey) {
+    if (_logger === null) {
+      _logger = pino(
+        getLoggerConfig(),
+        pino.transport(getLogTransport())
+      );
+    }
+    return Reflect.get(_logger, prop);
+  },
+});
 
 // Schedule log cleanup on initialization
 if (typeof window === 'undefined') {

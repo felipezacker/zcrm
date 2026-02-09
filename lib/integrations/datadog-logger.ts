@@ -42,7 +42,7 @@ export async function sendToDataDog(payload: DataDogLogPayload): Promise<void> {
     const apiKey = process.env.DATADOG_API_KEY!;
     const endpoint = getDataDogEndpoint();
 
-    const response = await fetch(`${endpoint}/${apiKey}`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -148,10 +148,11 @@ export async function logMetric(
     const apiKey = process.env.DATADOG_API_KEY!;
     const endpoint = getDataDogEndpoint();
 
-    await fetch(`${endpoint}/${apiKey}`, {
+    await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'DD-API-KEY': apiKey,
       },
       body: JSON.stringify({
         message: `Metric: ${metricName}`,

@@ -152,6 +152,7 @@ export class PerformanceMonitor {
   private metrics: Map<string, number[]> = new Map();
   private maxHistoryLength = 100; // Keep last 100 samples
   private degradations: PerformanceDegradation[] = [];
+  private maxDegradationsLength = 1000; // Keep last 1000 degradations
 
   /**
    * Record a metric value
@@ -197,6 +198,12 @@ export class PerformanceMonitor {
       };
 
       this.degradations.push(degradation);
+
+      // Keep only last N degradations to prevent memory leak
+      if (this.degradations.length > this.maxDegradationsLength) {
+        this.degradations.shift();
+      }
+
       this.triggerAlert(degradation);
     }
   }
@@ -352,6 +359,11 @@ export class PerformanceMonitor {
 export const performanceMonitor = new PerformanceMonitor();
 
 /**
+ * Store interval ID for cleanup
+ */
+let performanceMonitoringInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
  * Initialize performance monitoring
  */
 export function initializePerformanceMonitoring(): void {
@@ -359,8 +371,19 @@ export function initializePerformanceMonitoring(): void {
 
   // Check database performance every 5 minutes
   if (typeof setInterval !== 'undefined') {
-    setInterval(() => {
+    performanceMonitoringInterval = setInterval(() => {
       performanceMonitor.checkDatabasePerformance();
     }, 5 * 60 * 1000);
+  }
+}
+
+/**
+ * Clean up performance monitoring resources
+ * Call this during application shutdown or in tests
+ */
+export function cleanupPerformanceMonitoring(): void {
+  if (performanceMonitoringInterval !== null) {
+    clearInterval(performanceMonitoringInterval);
+    performanceMonitoringInterval = null;
   }
 }
