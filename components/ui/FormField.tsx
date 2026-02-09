@@ -15,22 +15,22 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react';
 // ============ BASE STYLES ============
 
 const baseInputStyles = cn(
-  'w-full bg-slate-50 dark:bg-black/20',
-  'border border-slate-200 dark:border-slate-700',
+  'w-full bg-background-secondary',
+  'border border-divider',
   'rounded-lg px-3 py-2 text-sm',
-  'text-slate-900 dark:text-white',
+  'text-foreground',
   'outline-none focus:ring-2 focus:ring-primary-500',
   'transition-all duration-200',
-  'placeholder:text-slate-400'
+  'placeholder:text-foreground-tertiary'
 );
 
 const errorInputStyles =
   'border-red-500 dark:border-red-400 focus:ring-red-500 bg-red-50/50 dark:bg-red-900/10';
 const successInputStyles = 'border-green-500 dark:border-green-400 focus:ring-green-500';
 
-const labelStyles = 'block text-xs font-bold text-slate-500 uppercase mb-1';
-const errorMessageStyles = 'text-xs text-red-500 mt-1 flex items-center gap-1';
-const hintStyles = 'text-[10px] text-slate-400 mt-1';
+const labelStyles = 'block text-xs font-bold text-foreground-secondary uppercase mb-1';
+const errorMessageStyles = 'text-xs text-error mt-1 flex items-center gap-1';
+const hintStyles = 'text-[10px] text-foreground-tertiary mt-1';
 
 // ============ VALIDATION STATE ============
 
@@ -446,17 +446,17 @@ export const CheckboxField: React.FC<CheckboxFieldProps> = ({
           type="checkbox"
           id={id}
           className={cn(
-            'w-4 h-4 rounded border-slate-300 dark:border-slate-600',
+            'w-4 h-4 rounded border-divider',
             'text-primary-600 focus:ring-primary-500',
-            'dark:bg-slate-800',
-            error && 'border-red-500'
+            'bg-background-secondary',
+            error && 'border-error'
           )}
           aria-invalid={error ? 'true' : undefined}
           aria-describedby={error ? errorId : undefined}
           {...registration}
           {...props}
         />
-        <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+        <span className="text-sm text-foreground-secondary">{label}</span>
       </label>
       {error && (
         <p id={errorId} className={errorMessageStyles} role="alert">
@@ -479,8 +479,8 @@ interface SubmitButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement
 
 const buttonVariants = {
   primary: 'bg-primary-600 hover:bg-primary-500 shadow-primary-600/20',
-  secondary: 'bg-slate-600 hover:bg-slate-500 shadow-slate-600/20',
-  danger: 'bg-red-600 hover:bg-red-500 shadow-red-600/20',
+  secondary: 'bg-neutral-600 hover:bg-neutral-500 shadow-neutral-600/20',
+  danger: 'bg-error hover:bg-error/90 shadow-error/20',
 };
 
 /**

@@ -85,3 +85,6 @@ test/*.md
 
 # DataCrazy Migration Dumps (sensitive data - DO NOT COMMIT)
 data/dumps/**/*.json
+
+*storybook.log
+storybook-static

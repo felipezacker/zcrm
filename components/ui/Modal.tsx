@@ -82,11 +82,11 @@ const sizeClasses = {
 }`.
  * @returns {Element | null} Retorna um valor do tipo `Element | null`.
  */
-export const Modal: React.FC<ModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  title, 
-  children, 
+export const Modal: React.FC<ModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  children,
   size = 'md',
   className,
   bodyClassName,
@@ -98,7 +98,7 @@ export const Modal: React.FC<ModalProps> = ({
   // Generate unique ID for title if not provided
   const generatedId = useId();
   const titleId = labelledById || `modal-title-${generatedId}`;
-  
+
   // Restore focus to trigger element on close
   useFocusReturn({ enabled: isOpen });
 
@@ -146,7 +146,7 @@ export const Modal: React.FC<ModalProps> = ({
             aria-label="Fechar modal"
             className={MODAL_CLOSE_BUTTON_CLASS}
           >
-            <X size={20} className="text-slate-500" aria-hidden="true" />
+            <X size={20} className="text-foreground-secondary" aria-hidden="true" />
           </button>
         </div>
         <div className={cn(MODAL_BODY_CLASS, bodyClassName)}>{children}</div>

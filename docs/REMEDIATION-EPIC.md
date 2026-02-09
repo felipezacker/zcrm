@@ -350,7 +350,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 #### Epic D: Component Consolidation & Design System Maturity
 
 **User Story D.1: Create Component Inventory & Audit**
-- **Status:** 📋 Ready for implementation
+- **Status:** ✅ IMPLEMENTED (COMPONENT-LIBRARY.md, AUDIT-REPORT.md, TOKENIZATION-COMPLETE.md)
 - **Effort:** 1-2 days
 - **Acceptance Criteria:**
   - [x] Audit all 99+ component files
@@ -372,7 +372,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ---
 
 **User Story D.2: Consolidate Shared Molecules Library**
-- **Status:** 📋 Ready for planning
+- **Status:** ✅ IMPLEMENTED (34+ colors refactored: Popover, Modal, modalStyles, FormField)
 - **Effort:** 3-5 days
 - **Acceptance Criteria:**
   - [x] Create `components/molecules/` directory
@@ -396,7 +396,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ---
 
 **User Story D.3: Implement Storybook & Design System Documentation**
-- **Status:** 📋 Ready for planning
+- **Status:** ✅ IMPLEMENTED (Storybook 10.2.7 + 38+ stories + a11y addon)
 - **Effort:** 3-5 days
 - **Acceptance Criteria:**
   - [x] Install and configure Storybook 8
@@ -420,7 +420,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ---
 
 **User Story D.4: Export & Version Design Tokens**
-- **Status:** 📋 Ready for planning
+- **Status:** ✅ IMPLEMENTED (tokens.json v1.0.0, tokens.css, tokens.tailwind.js, CHANGELOG.md)
 - **Effort:** 2-3 days
 - **Acceptance Criteria:**
   - [x] Extract all design tokens from globals.css
@@ -445,7 +445,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ---
 
 **User Story D.5: Dark Mode Testing & Accessibility Validation**
-- **Status:** 📋 Ready for planning
+- **Status:** ✅ IMPLEMENTED (Storybook dark mode tested, a11y addon verified)
 - **Effort:** 2-3 days
 - **Acceptance Criteria:**
   - [x] Create dark mode test suite (all components)
