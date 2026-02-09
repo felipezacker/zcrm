@@ -30,7 +30,6 @@ export default function RootLayout({
     <html lang="pt-BR" className="dark" suppressHydrationWarning>
       <head>
         {/* Design System Tokens - Phase D */}
-        <link rel="stylesheet" href="/design-tokens.css" />
       </head>
       <body className={`${inter.variable} font-sans antialiased bg-[var(--color-background)] text-[var(--color-foreground)]`}>
         <ServiceWorkerRegister />
