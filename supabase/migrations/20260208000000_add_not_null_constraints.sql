@@ -29,10 +29,12 @@ ADD CONSTRAINT profiles_organization_id_not_null CHECK (organization_id IS NOT N
 
 -- contacts.organization_id -> NOT NULL (already NOT NULL in schema)
 ALTER TABLE IF EXISTS public.contacts
+DROP CONSTRAINT IF EXISTS contacts_organization_id_not_null,
 ADD CONSTRAINT contacts_organization_id_not_null CHECK (organization_id IS NOT NULL);
 
 -- deals.organization_id -> NOT NULL (already NOT NULL in schema)
 ALTER TABLE IF EXISTS public.deals
+DROP CONSTRAINT IF EXISTS deals_organization_id_not_null,
 ADD CONSTRAINT deals_organization_id_not_null CHECK (organization_id IS NOT NULL);
 
 -- boards.organization_id -> NOT NULL
@@ -65,10 +67,7 @@ ALTER TABLE IF EXISTS public.custom_field_definitions
 DROP CONSTRAINT IF EXISTS custom_field_definitions_organization_id_not_null,
 ADD CONSTRAINT custom_field_definitions_organization_id_not_null CHECK (organization_id IS NOT NULL);
 
--- custom_field_values.organization_id -> NOT NULL
-ALTER TABLE IF EXISTS public.custom_field_values
-DROP CONSTRAINT IF EXISTS custom_field_values_organization_id_not_null,
-ADD CONSTRAINT custom_field_values_organization_id_not_null CHECK (organization_id IS NOT NULL);
+-- NOTE: custom_field_values table does not exist (REMOVED per QA-PHASE-C-REVIEW C7)
 
 -- ==============================================================================
 -- 2. BOARD_ID CONSTRAINTS (Deals must belong to a board)
@@ -76,12 +75,10 @@ ADD CONSTRAINT custom_field_values_organization_id_not_null CHECK (organization_
 
 -- deals.board_id -> NOT NULL (already NOT NULL in schema)
 ALTER TABLE IF EXISTS public.deals
+DROP CONSTRAINT IF EXISTS deals_board_id_not_null,
 ADD CONSTRAINT deals_board_id_not_null CHECK (board_id IS NOT NULL);
 
--- deal_items.board_id -> NOT NULL
-ALTER TABLE IF EXISTS public.deal_items
-DROP CONSTRAINT IF EXISTS deal_items_board_id_not_null,
-ADD CONSTRAINT deal_items_board_id_not_null CHECK (board_id IS NOT NULL);
+-- NOTE: deal_items.board_id - Column does not exist in schema (REMOVED per QA-PHASE-C-REVIEW C1)
 
 -- ==============================================================================
 -- 3. CONTACT_ID CONSTRAINTS (Activities should be linked to contacts)
@@ -103,34 +100,42 @@ ADD CONSTRAINT profiles_created_at_not_null CHECK (created_at IS NOT NULL);
 
 -- contacts.created_at -> NOT NULL
 ALTER TABLE IF EXISTS public.contacts
+DROP CONSTRAINT IF EXISTS contacts_created_at_not_null,
 ADD CONSTRAINT contacts_created_at_not_null CHECK (created_at IS NOT NULL);
 
 -- deals.created_at -> NOT NULL
 ALTER TABLE IF EXISTS public.deals
+DROP CONSTRAINT IF EXISTS deals_created_at_not_null,
 ADD CONSTRAINT deals_created_at_not_null CHECK (created_at IS NOT NULL);
 
 -- boards.created_at -> NOT NULL
 ALTER TABLE IF EXISTS public.boards
+DROP CONSTRAINT IF EXISTS boards_created_at_not_null,
 ADD CONSTRAINT boards_created_at_not_null CHECK (created_at IS NOT NULL);
 
 -- board_stages.created_at -> NOT NULL
 ALTER TABLE IF EXISTS public.board_stages
+DROP CONSTRAINT IF EXISTS board_stages_created_at_not_null,
 ADD CONSTRAINT board_stages_created_at_not_null CHECK (created_at IS NOT NULL);
 
 -- activities.created_at -> NOT NULL
 ALTER TABLE IF EXISTS public.activities
+DROP CONSTRAINT IF EXISTS activities_created_at_not_null,
 ADD CONSTRAINT activities_created_at_not_null CHECK (created_at IS NOT NULL);
 
 -- deal_items.created_at -> NOT NULL
 ALTER TABLE IF EXISTS public.deal_items
+DROP CONSTRAINT IF EXISTS deal_items_created_at_not_null,
 ADD CONSTRAINT deal_items_created_at_not_null CHECK (created_at IS NOT NULL);
 
 -- deal_notes.created_at -> NOT NULL
 ALTER TABLE IF EXISTS public.deal_notes
+DROP CONSTRAINT IF EXISTS deal_notes_created_at_not_null,
 ADD CONSTRAINT deal_notes_created_at_not_null CHECK (created_at IS NOT NULL);
 
 -- crm_companies.created_at -> NOT NULL
 ALTER TABLE IF EXISTS public.crm_companies
+DROP CONSTRAINT IF EXISTS crm_companies_created_at_not_null,
 ADD CONSTRAINT crm_companies_created_at_not_null CHECK (created_at IS NOT NULL);
 
 -- ==============================================================================

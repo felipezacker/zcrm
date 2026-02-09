@@ -4,6 +4,7 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
+import { randomUUID } from 'crypto';
 
 /**
  * Initialize source map uploads for Sentry
@@ -58,6 +59,8 @@ export function captureExceptionWithSourceMap(
       trace: {
         op: 'error.capture',
         description: error.message,
+        trace_id: randomUUID(),
+        span_id: randomUUID().slice(0, 16),
       },
     },
     extra: {
@@ -66,7 +69,7 @@ export function captureExceptionWithSourceMap(
     },
     tags: {
       errorType: error.constructor.name,
-      environment: process.env.NODE_ENV,
+      environment: process.env.NODE_ENV as string,
     },
   });
 }

@@ -48,35 +48,33 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
 );
 
 -- Create indexes for audit queries
+-- FIXED (H3): Removed static NOW() evaluation from WHERE clauses
+-- NOTE: For very large audit logs (>10M rows), consider using pg_partman for time-based partitioning
+-- until then, these full indexes support all queries over the 7-year retention period
+
 CREATE INDEX IF NOT EXISTS idx_audit_log_table_name
-  ON public.audit_log(table_name)
-  WHERE changed_at > NOW() - INTERVAL '7 years';
+  ON public.audit_log(table_name);
 
 CREATE INDEX IF NOT EXISTS idx_audit_log_record_id
-  ON public.audit_log(record_id)
-  WHERE changed_at > NOW() - INTERVAL '7 years';
+  ON public.audit_log(record_id);
 
 CREATE INDEX IF NOT EXISTS idx_audit_log_organization_id
-  ON public.audit_log(organization_id)
-  WHERE changed_at > NOW() - INTERVAL '7 years';
+  ON public.audit_log(organization_id);
 
 CREATE INDEX IF NOT EXISTS idx_audit_log_changed_by
-  ON public.audit_log(changed_by)
-  WHERE changed_at > NOW() - INTERVAL '7 years';
+  ON public.audit_log(changed_by);
 
 CREATE INDEX IF NOT EXISTS idx_audit_log_changed_at
-  ON public.audit_log(changed_at DESC)
-  WHERE changed_at > NOW() - INTERVAL '7 years';
+  ON public.audit_log(changed_at DESC);
 
 -- Composite index for historical queries (table + record + date)
 CREATE INDEX IF NOT EXISTS idx_audit_log_table_record_date
-  ON public.audit_log(table_name, record_id, changed_at DESC)
-  WHERE changed_at > NOW() - INTERVAL '7 years';
+  ON public.audit_log(table_name, record_id, changed_at DESC);
 
 -- Enable RLS (only admins can view)
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
--- Policy: Only authenticated admins can view audit logs (for now)
+-- Policy: Only authenticated users can SELECT audit logs for their organization
 CREATE POLICY "Audit logs visible to authenticated users" ON public.audit_log
   FOR SELECT
   TO authenticated
@@ -86,6 +84,16 @@ CREATE POLICY "Audit logs visible to authenticated users" ON public.audit_log
       WHERE id = auth.uid()
     )
   );
+
+-- ADDED (M1): Prevent UPDATE operations on audit_log (immutability enforcement)
+CREATE POLICY "Audit logs cannot be updated" ON public.audit_log
+  FOR UPDATE
+  USING (false);
+
+-- ADDED (M1): Prevent DELETE operations on audit_log (immutability enforcement)
+CREATE POLICY "Audit logs cannot be deleted" ON public.audit_log
+  FOR DELETE
+  USING (false);
 
 COMMENT ON TABLE public.audit_log IS
   'Immutable audit trail for LGPD/GDPR compliance. Tracks all changes to critical tables.';
@@ -128,6 +136,7 @@ BEGIN
   END IF;
 
   -- Insert audit log entry
+  -- FIXED (H2): Capture old_values on both UPDATE and DELETE operations
   INSERT INTO public.audit_log (
     table_name,
     record_id,
@@ -140,8 +149,8 @@ BEGIN
     TG_TABLE_NAME,
     COALESCE(NEW.id, OLD.id),
     TG_OP,
-    CASE WHEN TG_OP = 'DELETE' THEN row_to_json(OLD) ELSE NULL END,
-    CASE WHEN TG_OP != 'DELETE' THEN row_to_json(NEW) ELSE NULL END,
+    CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN row_to_json(OLD) ELSE NULL END,
+    CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN row_to_json(NEW) ELSE NULL END,
     auth.uid(),
     v_organization_id
   );

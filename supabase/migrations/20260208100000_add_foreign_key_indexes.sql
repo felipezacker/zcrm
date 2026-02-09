@@ -21,10 +21,7 @@ BEGIN;
 -- 1. ORGANIZATION RELATIONSHIPS
 -- ==============================================================================
 
--- profiles.organization_id
-CREATE INDEX IF NOT EXISTS idx_profiles_organization_id
-  ON public.profiles(organization_id)
-  WHERE deleted_at IS NULL;
+-- profiles.organization_id (NOTE: Phase A RLS migration already created idx_profiles_org - REMOVED DUPLICATE per QA-PHASE-C-REVIEW H4)
 
 -- contacts.organization_id
 CREATE INDEX IF NOT EXISTS idx_contacts_organization_id
@@ -41,40 +38,25 @@ CREATE INDEX IF NOT EXISTS idx_boards_organization_id
   ON public.boards(organization_id)
   WHERE deleted_at IS NULL;
 
--- board_stages.organization_id
-CREATE INDEX IF NOT EXISTS idx_board_stages_organization_id
-  ON public.board_stages(organization_id)
-  WHERE deleted_at IS NULL;
+-- board_stages.organization_id (NOTE: Phase A RLS migration already created idx_board_stages_org - REMOVED DUPLICATE per QA-PHASE-C-REVIEW H4)
 
 -- activities.organization_id
 CREATE INDEX IF NOT EXISTS idx_activities_organization_id
   ON public.activities(organization_id)
   WHERE deleted_at IS NULL;
 
--- deal_items.organization_id
-CREATE INDEX IF NOT EXISTS idx_deal_items_organization_id
-  ON public.deal_items(organization_id)
-  WHERE deleted_at IS NULL;
+-- deal_items.organization_id (NOTE: Phase A RLS migration already created idx_deal_items_org - REMOVED DUPLICATE per QA-PHASE-C-REVIEW H4)
 
--- deal_notes.organization_id
-CREATE INDEX IF NOT EXISTS idx_deal_notes_organization_id
-  ON public.deal_notes(organization_id)
-  WHERE deleted_at IS NULL;
+-- deal_notes.organization_id (NOTE: Phase A RLS migration already created idx_deal_notes_org - REMOVED DUPLICATE per QA-PHASE-C-REVIEW H4)
 
 -- crm_companies.organization_id
 CREATE INDEX IF NOT EXISTS idx_crm_companies_organization_id
   ON public.crm_companies(organization_id)
   WHERE deleted_at IS NULL;
 
--- custom_field_definitions.organization_id
-CREATE INDEX IF NOT EXISTS idx_custom_field_definitions_organization_id
-  ON public.custom_field_definitions(organization_id)
-  WHERE deleted_at IS NULL;
+-- custom_field_definitions.organization_id (NOTE: Phase A RLS migration already created idx_custom_field_definitions_org - REMOVED DUPLICATE per QA-PHASE-C-REVIEW H4)
 
--- custom_field_values.organization_id
-CREATE INDEX IF NOT EXISTS idx_custom_field_values_organization_id
-  ON public.custom_field_values(organization_id)
-  WHERE deleted_at IS NULL;
+-- NOTE: custom_field_values table does not exist in schema (REMOVED per QA-PHASE-C-REVIEW C7)
 
 -- ==============================================================================
 -- 2. BOARD RELATIONSHIPS
@@ -85,15 +67,11 @@ CREATE INDEX IF NOT EXISTS idx_deals_board_id
   ON public.deals(board_id)
   WHERE deleted_at IS NULL;
 
--- deal_items.board_id
-CREATE INDEX IF NOT EXISTS idx_deal_items_board_id
-  ON public.deal_items(board_id)
-  WHERE deleted_at IS NULL;
+-- NOTE: deal_items.board_id - Column does not exist in schema (REMOVED per QA-PHASE-C-REVIEW C2)
 
--- board_stages.board_id
+-- board_stages.board_id (NOTE: board_stages has no deleted_at column per schema - filtering removed)
 CREATE INDEX IF NOT EXISTS idx_board_stages_board_id
-  ON public.board_stages(board_id)
-  WHERE deleted_at IS NULL;
+  ON public.board_stages(board_id);
 
 -- ==============================================================================
 -- 3. CONTACT RELATIONSHIPS
@@ -109,10 +87,7 @@ CREATE INDEX IF NOT EXISTS idx_activities_contact_id
   ON public.activities(contact_id)
   WHERE deleted_at IS NULL;
 
--- deal_items.contact_id (if exists)
-CREATE INDEX IF NOT EXISTS idx_deal_items_contact_id
-  ON public.deal_items(contact_id)
-  WHERE deleted_at IS NULL;
+-- NOTE: deal_items.contact_id - Column does not exist in schema (REMOVED per QA-PHASE-C-REVIEW C3)
 
 -- ==============================================================================
 -- 4. OWNER RELATIONSHIPS
@@ -162,18 +137,10 @@ CREATE INDEX IF NOT EXISTS idx_contacts_client_company_id
   WHERE deleted_at IS NULL;
 
 -- ==============================================================================
--- 7. CUSTOM FIELDS RELATIONSHIPS
+-- 7. CUSTOM FIELDS RELATIONSHIPS (removed custom_field_values - table doesn't exist)
 -- ==============================================================================
 
--- custom_field_values.custom_field_definition_id
-CREATE INDEX IF NOT EXISTS idx_custom_field_values_definition_id
-  ON public.custom_field_values(custom_field_definition_id)
-  WHERE deleted_at IS NULL;
-
--- custom_field_values.record_id (for polymorphic access)
-CREATE INDEX IF NOT EXISTS idx_custom_field_values_record_id
-  ON public.custom_field_values(record_id)
-  WHERE deleted_at IS NULL;
+-- NOTE: custom_field_values table does not exist in schema (REMOVED per QA-PHASE-C-REVIEW C7)
 
 -- ==============================================================================
 -- 8. COMPOSITE INDEXES (Frequently used combinations)

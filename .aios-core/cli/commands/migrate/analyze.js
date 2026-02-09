@@ -190,7 +190,7 @@ async function analyzeMigrationPlan(projectRoot, options = {}) {
   for (const filePath of allFiles) {
     const relativePath = path.relative(aiosCoreDir, filePath);
     const stats = await fs.promises.stat(filePath);
-    const module = categorizeFile(relativePath);
+    const moduleType = categorizeFile(relativePath);
 
     const fileInfo = {
       sourcePath: filePath,
@@ -198,11 +198,11 @@ async function analyzeMigrationPlan(projectRoot, options = {}) {
       size: stats.size,
     };
 
-    if (module && plan.modules[module]) {
+    if (moduleType && plan.modules[moduleType]) {
       // Calculate target path
-      fileInfo.targetPath = path.join(aiosCoreDir, module, relativePath);
-      plan.modules[module].files.push(fileInfo);
-      plan.modules[module].size += stats.size;
+      fileInfo.targetPath = path.join(aiosCoreDir, moduleType, relativePath);
+      plan.modules[moduleType].files.push(fileInfo);
+      plan.modules[moduleType].size += stats.size;
     } else {
       plan.uncategorized.push(fileInfo);
     }

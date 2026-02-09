@@ -14,7 +14,7 @@ export const logger = new Proxy({} as pino.Logger, {
     if (_logger === null) {
       _logger = pino(
         getLoggerConfig(),
-        pino.transport(getLogTransport())
+        pino.transport(getLogTransport() as any)
       );
     }
     return Reflect.get(_logger, prop);

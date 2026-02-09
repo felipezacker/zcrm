@@ -31,6 +31,30 @@ const eslintConfig = defineConfig([
     },
   },
 
+  // .aios-core framework infrastructure uses CommonJS; allow require() there.
+  {
+    files: [".aios-core/**/*.js"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+
+  // Templates are not executable code; ignore parsing errors
+  {
+    files: [".aios-core/product/templates/**", ".aios-core/development/templates/**"],
+    rules: {
+      "@next/next/no-assign-module-variable": "off",
+    },
+  },
+
+  // Template files have placeholder syntax that's not valid JavaScript
+  {
+    ignores: [
+      ".aios-core/product/templates/**/*.{js,tsx}",
+      ".aios-core/development/templates/**/*.{js,tsx}",
+    ],
+  },
+
   // Project-level rule tuning: keep lint useful, but avoid blocking on high-noise rules.
   {
     plugins: {
