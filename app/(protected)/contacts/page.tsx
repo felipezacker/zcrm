@@ -1,11 +1,11 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { PageLoader } from '@/components/PageLoader'
+import { SkeletonList } from '@/components/ui/skeleton'
 
 const ContactsPage = dynamic(
     () => import('@/features/contacts/ContactsPage').then(m => ({ default: m.ContactsPage })),
-    { loading: () => <PageLoader />, ssr: false }
+    { loading: () => <div className="p-6"><SkeletonList rows={8} /></div>, ssr: false }
 )
 
 /**

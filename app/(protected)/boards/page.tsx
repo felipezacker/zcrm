@@ -1,11 +1,11 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { PageLoader } from '@/components/PageLoader'
+import { SkeletonPipeline } from '@/components/ui/skeleton'
 
 const BoardsPage = dynamic(
     () => import('@/features/boards/BoardsPage').then(m => ({ default: m.BoardsPage })),
-    { loading: () => <PageLoader />, ssr: false }
+    { loading: () => <div className="p-6"><SkeletonPipeline /></div>, ssr: false }
 )
 
 /**

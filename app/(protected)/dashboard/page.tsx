@@ -1,13 +1,13 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { PageLoader } from '@/components/PageLoader'
+import { SkeletonDashboard } from '@/components/ui/skeleton'
 
-// Dynamic import with loading state
+// Dynamic import with contextual skeleton loading
 const DashboardPage = dynamic(
     () => import('@/features/dashboard/DashboardPage'),
     {
-        loading: () => <PageLoader />,
+        loading: () => <div className="p-6"><SkeletonDashboard /></div>,
         ssr: false
     }
 )
