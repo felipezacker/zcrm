@@ -1,24 +1,27 @@
 import pino from 'pino';
 import { randomUUID } from 'crypto';
 import { redactSensitiveData } from './utils/redact';
+import { getLoggerConfig, getLogTransport, scheduleLogCleanup } from './logger-config';
+import { initializeDataDogIntegration } from './integrations/datadog-logger';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-export const logger = pino({
-  level: process.env.LOG_LEVEL || 'info',
-  transport: isDev
-    ? {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          singleLine: false,
-        },
-      }
-    : undefined,
-  base: {
-    environment: process.env.NODE_ENV,
-  },
-});
+// Initialize logger with configuration and transport
+export const logger = pino(
+  getLoggerConfig(),
+  pino.transport(getLogTransport())
+);
+
+// Schedule log cleanup on initialization
+if (typeof window === 'undefined') {
+  // Only schedule in server environment (not in browser)
+  try {
+    scheduleLogCleanup();
+    initializeDataDogIntegration();
+  } catch (error) {
+    console.error('Failed to initialize logging infrastructure:', error);
+  }
+}
 
 export const generateCorrelationId = (): string => {
   return randomUUID();
