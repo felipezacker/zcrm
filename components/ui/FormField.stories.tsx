@@ -21,7 +21,7 @@ export const InputDefault: Story = {
           type="email"
           placeholder="Enter your email"
           registration={register('email')}
-          error={errors.email}
+          error={errors.email as any}
         />
       </div>
     );
@@ -36,7 +36,7 @@ export const InputWithError: Story = {
           label="Password"
           type="password"
           placeholder="Enter password"
-          error={{ message: 'Password is required' } as any}
+          error={{ type: 'required', message: 'Password is required' } as any}
         />
       </div>
     );

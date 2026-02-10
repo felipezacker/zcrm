@@ -18,6 +18,7 @@ export const Default: Story = {
     onClose: () => {},
     title: 'Choose Action',
     description: 'Select an action below',
+    children: null,
   },
   render: (args) => {
     const [isOpen, setIsOpen] = useState(args.isOpen);
@@ -42,6 +43,7 @@ export const Mobile: Story = {
     onClose: () => {},
     title: 'Menu',
     description: 'Select an option',
+    children: null,
   },
   render: (args) => {
     const [isOpen, setIsOpen] = useState(args.isOpen);

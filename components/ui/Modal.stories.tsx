@@ -35,6 +35,7 @@ export const Default: Story = {
     onClose: () => {},
     title: 'Dialog Title',
     size: 'md',
+    children: null,
   },
 };
 
@@ -45,6 +46,7 @@ export const Small: Story = {
     onClose: () => {},
     title: 'Small Modal',
     size: 'sm',
+    children: null,
   },
 };
 
@@ -55,6 +57,7 @@ export const Large: Story = {
     onClose: () => {},
     title: 'Large Modal',
     size: 'lg',
+    children: null,
   },
 };
 
@@ -65,6 +68,7 @@ export const Mobile: Story = {
     onClose: () => {},
     title: 'Mobile Modal',
     size: 'md',
+    children: null,
   },
   parameters: { viewport: { defaultViewport: 'mobileSE' } },
 };
@@ -86,14 +90,18 @@ export const WithLongContent: Story = {
     onClose: () => {},
     title: 'Long Content Modal',
     size: 'md',
+    children: null,
   },
 };
 
 export const Dark: Story = {
   render: (args) => <ModalWrapper {...args} />,
   args: {
+    isOpen: true,
+    onClose: () => {},
     title: 'Dark Mode Modal',
     size: 'md',
+    children: null,
   },
   decorators: [
     (Story) => (

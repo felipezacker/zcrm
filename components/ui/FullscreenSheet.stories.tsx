@@ -17,6 +17,7 @@ export const Default: Story = {
     isOpen: true,
     onClose: () => {},
     title: 'Fullscreen Sheet',
+    children: null,
   },
   render: (args) => {
     const [isOpen, setIsOpen] = useState(args.isOpen);
@@ -44,6 +45,7 @@ export const Mobile: Story = {
     isOpen: true,
     onClose: () => {},
     title: 'Mobile Fullscreen',
+    children: null,
   },
   render: (args) => {
     const [isOpen, setIsOpen] = useState(args.isOpen);

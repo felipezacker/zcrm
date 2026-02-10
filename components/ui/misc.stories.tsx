@@ -4,6 +4,13 @@ import AudioPlayer from './AudioPlayer';
 import { ContactSearchCombobox } from './ContactSearchCombobox';
 import { LossReasonModal } from './LossReasonModal';
 
+const meta = {
+  title: 'UI/Misc',
+  tags: ['autodocs'],
+} satisfies Meta;
+
+export default meta;
+
 // ===== AUDIO PLAYER =====
 
 export const AudioPlayerStory: StoryObj = {
@@ -35,13 +42,13 @@ export const AudioPlayerDark: StoryObj = {
 
 export const ContactSearchDefault: StoryObj = {
   render: () => {
-    const [contact, setContact] = useState(null);
-    const [company, setCompany] = useState(null);
+    const [contact, setContact] = useState<any>(null);
+    const [company, setCompany] = useState<any>(null);
     return (
       <div className="w-96">
         <ContactSearchCombobox
-          onSelectContact={setContact}
-          onSelectCompany={setCompany}
+          onSelectContact={(c) => setContact(c)}
+          onSelectCompany={(o) => setCompany(o)}
           onCreateNew={() => {}}
           selectedContact={contact}
           selectedCompany={company}
@@ -53,13 +60,13 @@ export const ContactSearchDefault: StoryObj = {
 
 export const ContactSearchMobile: StoryObj = {
   render: () => {
-    const [contact, setContact] = useState(null);
-    const [company, setCompany] = useState(null);
+    const [contact, setContact] = useState<any>(null);
+    const [company, setCompany] = useState<any>(null);
     return (
       <div className="w-80">
         <ContactSearchCombobox
-          onSelectContact={setContact}
-          onSelectCompany={setCompany}
+          onSelectContact={(c) => setContact(c)}
+          onSelectCompany={(o) => setCompany(o)}
           onCreateNew={() => {}}
           selectedContact={contact}
           selectedCompany={company}
@@ -72,13 +79,13 @@ export const ContactSearchMobile: StoryObj = {
 
 export const ContactSearchDark: StoryObj = {
   render: () => {
-    const [contact, setContact] = useState(null);
-    const [company, setCompany] = useState(null);
+    const [contact, setContact] = useState<any>(null);
+    const [company, setCompany] = useState<any>(null);
     return (
       <div className="dark bg-slate-950 p-8 rounded w-96">
         <ContactSearchCombobox
-          onSelectContact={setContact}
-          onSelectCompany={setCompany}
+          onSelectContact={(c) => setContact(c)}
+          onSelectCompany={(o) => setCompany(o)}
           onCreateNew={() => {}}
           selectedContact={contact}
           selectedCompany={company}

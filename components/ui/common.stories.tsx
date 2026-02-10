@@ -5,6 +5,13 @@ import { Badge } from './badge';
 import { Alert, AlertTitle, AlertDescription } from './alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
 
+const meta = {
+  title: 'Compositions/Common',
+  tags: ['autodocs'],
+} satisfies Meta;
+
+export default meta;
+
 // ===== FORM LAYOUTS =====
 
 export const LoginForm: StoryObj = {

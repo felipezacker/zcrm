@@ -5,6 +5,13 @@ import { Badge } from './badge';
 import { Avatar, AvatarImage, AvatarFallback } from './avatar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
 
+const meta = {
+  title: 'Compositions/Complex',
+  tags: ['autodocs'],
+} satisfies Meta;
+
+export default meta;
+
 // ===== COMPOSED COMPONENTS =====
 
 export const UserProfile: StoryObj = {
