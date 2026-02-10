@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { generateUUID } from './uuid';
 import { getRunId } from './runId';
 import { assertNoSupabaseError, getSupabaseAdminClient, requireSupabaseData } from './supabaseAdmin';
 
@@ -192,12 +192,12 @@ export async function createMinimalFixtures(): Promise<TestFixtureBundle> {
   const contactA = await createContact({
     organizationId: orgA.organizationId,
     name: `Contato A ${runId}`,
-    email: `a.${runId}.${randomUUID()}@example.com`,
+    email: `a.${runId}.${generateUUID()}@example.com`,
   });
   const contactB = await createContact({
     organizationId: orgB.organizationId,
     name: `Contato B ${runId}`,
-    email: `b.${runId}.${randomUUID()}@example.com`,
+    email: `b.${runId}.${generateUUID()}@example.com`,
   });
 
   const dealA = await createDeal({

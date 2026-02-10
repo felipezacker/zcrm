@@ -79,6 +79,9 @@ docs/security/
 
 # Dev/debug scripts (not needed for app to run)
 scripts/
+!scripts/migrate-datacrazy-to-zmobcrm.cjs
+!scripts/validate-datacrazy-dump.cjs
+!scripts/datacrazy-dump.js
 
 # Test documentation (test code stays, docs are local)
 test/*.md
