@@ -1,11 +1,13 @@
 # DataCrazy → ZmobCRM Migration Guide
 
-## 📋 Status
+## Status
 
-- ✅ **Data Dump Completed** (February 8, 2026, 17:02 UTC)
-- ✅ **38,281 records extracted** (10.1k leads, 13.9k deals, 27 products, 37 tags)
-- ⏳ **Staging & Migration** - In Planning
-- ⏳ **Production Cutover** - To be scheduled
+- [x] **Data Dump Completed** (February 8, 2026, 17:02 UTC)
+- [x] **38,281 records extracted** (10.1k leads, 13.9k deals, 27 products, 37 tags)
+- [x] **Schema Migration Created** (February 10, 2026) - `20260210000000_datacrazy_staging.sql`
+- [x] **Migration Script Created** (February 10, 2026) - `scripts/migrate-datacrazy-to-zmobcrm.cjs`
+- [ ] **Run Migration** - Execute against Supabase
+- [ ] **Production Cutover** - Validate and go live
 
 ---
 
@@ -103,23 +105,97 @@ All DataCrazy data is dumped in: `/data/dumps/`
 
 ---
 
-## 🚀 Migration Strategies
+## How to Run the Migration
 
-### Strategy 1: Bulk Insert via SQL (Fastest)
-1. Create staging tables
-2. COPY data from JSON to staging
-3. Transform and validate
-4. Move to production tables
+### Prerequisites
 
-### Strategy 2: API-based (Safest)
-1. Create Supabase functions to process each entity
-2. Insert via REST API with RLS enforcement
-3. Real-time validation
+1. Supabase project running with schema initialized
+2. Environment variables set in `.env.local`:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_SECRET_KEY=sb_secret_...
+   ```
+3. Data dumps present in `data/dumps/`
 
-### Strategy 3: Hybrid (Recommended)
-1. Bulk insert to staging
-2. Validate with SQL checks
-3. Move to production with functions
+### Step 1: Apply Schema Migration
+
+```bash
+# Via Supabase CLI (if linked)
+supabase db push
+
+# Or apply directly to the database:
+# Run supabase/migrations/20260210000000_datacrazy_staging.sql
+```
+
+This adds: `contact_tags` junction table, `loss_reasons` table, metadata columns on contacts/deals/activities/products.
+
+### Step 2: Disable Duplicate Deal Trigger (temporary)
+
+```sql
+-- IMPORTANT: The check_deal_duplicate_trigger blocks bulk import
+-- Disable BEFORE running migration:
+ALTER TABLE deals DISABLE TRIGGER check_deal_duplicate_trigger;
+
+-- Re-enable AFTER migration:
+ALTER TABLE deals ENABLE TRIGGER check_deal_duplicate_trigger;
+```
+
+### Step 3: Run Migration Script
+
+```bash
+# Dry-run first (validates without writing)
+node scripts/migrate-datacrazy-to-zmobcrm.cjs --dry-run
+
+# Full migration (with confirmation prompt)
+node scripts/migrate-datacrazy-to-zmobcrm.cjs
+
+# Full migration (skip confirmation)
+node scripts/migrate-datacrazy-to-zmobcrm.cjs --force
+
+# Migrate single entity
+node scripts/migrate-datacrazy-to-zmobcrm.cjs --entity=contacts
+
+# Custom batch size (default: 500)
+node scripts/migrate-datacrazy-to-zmobcrm.cjs --batch=200
+```
+
+### Step 4: Re-enable Triggers
+
+```sql
+ALTER TABLE deals ENABLE TRIGGER check_deal_duplicate_trigger;
+```
+
+### Step 5: Validate
+
+The script outputs post-migration counts automatically. Compare with expected:
+
+| Entity | Expected |
+|--------|----------|
+| contacts | 10,126 |
+| deals | 13,941 |
+| products | 27 |
+| tags | 37 |
+| boards | 2 |
+| board_stages | 15 |
+| activities | 6 |
+| loss_reasons | 7 |
+
+### Migration Order (FK-safe)
+
+1. Tags (no deps)
+2. Loss Reasons (no deps)
+3. Products (no deps)
+4. Boards (no deps)
+5. Board Stages (depends on boards)
+6. Contacts (no deps after org)
+7. Contact Tags (depends on contacts + tags)
+8. Deals (depends on contacts, board_stages)
+9. Deal Items (depends on deals, products)
+10. Activities (depends on deals, contacts)
+
+### Idempotency
+
+The script uses `UPSERT` with UUID primary keys preserved from DataCrazy. Safe to re-run multiple times. Failed rows are retried individually and errors logged to `data/migration-errors-{entity}.json`.
 
 ---
 
@@ -189,18 +265,48 @@ export DATACRAZY_API_KEY="your_key_from_crm.datacrazy.io/config/api"
 
 ---
 
-## 📞 Next Steps
+## 100% Data Preservation
 
-1. **Data Validation** - Review dump files for completeness
-2. **Schema Design** - Finalize ZmobCRM schema if needed
-3. **Staging Setup** - Create staging tables in Supabase
-4. **Migration Script** - Develop entity-by-entity import
-5. **Testing** - Full migration test run
-6. **Production Cutover** - Schedule and execute
-7. **Verification** - Validate all data in ZmobCRM
-8. **Archive** - Delete DataCrazy dump files
+All DataCrazy fields are preserved, even those without direct ZmobCRM columns:
+
+| DataCrazy Field | Where it's stored |
+|-----------------|-------------------|
+| `lead.address` | `contacts.address` (JSONB) |
+| `lead.instagram` | `contacts.instagram` |
+| `lead.taxId` | `contacts.tax_id` |
+| `lead.site` | `contacts.website` |
+| `lead.rawPhone` | `contacts.raw_phone` |
+| `lead.metrics.*` | `contacts.metadata.datacrazy_metrics` |
+| `lead.sourceReferral` | `contacts.metadata.datacrazy_source_referral` |
+| `lead.lists[]` | `contacts.metadata.datacrazy_lists` |
+| `lead.contacts[]` (platforms) | `contacts.metadata.datacrazy_platform_contacts` |
+| `lead.tags[]` | `contact_tags` junction table |
+| `business.code` | `deals.datacrazy_code` |
+| `business.discount` | `deals.discount` |
+| `business.justification` | `deals.loss_reason_text` |
+| `business.shipping/coupon/etc` | `deals.custom_fields` (JSONB) |
+| `business.attendantId` | `deals.custom_fields.datacrazy_attendant_id` |
+| `activity.attendant` | `activities.metadata` (JSONB) |
+| `activity.activityType` | `activities.metadata` + `activities.type` |
+| `lossReasons.*` | `loss_reasons` table |
+
+## Schema Additions (migration 20260210000000)
+
+- `contact_tags` table (contact_id, tag_id) - junction for lead tags
+- `loss_reasons` table (id, name, requires_justification)
+- `contacts`: +metadata, +instagram, +tax_id, +website, +raw_phone, +address, +datacrazy_id
+- `deals`: +datacrazy_id, +datacrazy_code, +loss_reason_text, +discount, +loss_reason_id
+- `activities`: +end_date, +notes, +datacrazy_id, +metadata
+- `products`: +datacrazy_id, +image
+
+## Files Created
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/20260210000000_datacrazy_staging.sql` | Schema additions for 100% data preservation |
+| `scripts/migrate-datacrazy-to-zmobcrm.cjs` | Node.js migration script (idempotent, batch, error recovery) |
 
 ---
 
-**Data Engineer:** Dara 🗄️
-**Last Updated:** February 8, 2026
+**Data Engineer:** Dara
+**Last Updated:** February 10, 2026
