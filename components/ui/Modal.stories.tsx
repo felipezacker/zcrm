@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { Modal } from './Modal';
 import { Button } from './button';
 import { useState } from 'react';
@@ -31,6 +31,8 @@ const ModalWrapper = (args: any) => {
 export const Default: Story = {
   render: (args) => <ModalWrapper {...args} />,
   args: {
+    isOpen: true,
+    onClose: () => {},
     title: 'Dialog Title',
     size: 'md',
   },
@@ -39,6 +41,8 @@ export const Default: Story = {
 export const Small: Story = {
   render: (args) => <ModalWrapper {...args} />,
   args: {
+    isOpen: true,
+    onClose: () => {},
     title: 'Small Modal',
     size: 'sm',
   },
@@ -47,6 +51,8 @@ export const Small: Story = {
 export const Large: Story = {
   render: (args) => <ModalWrapper {...args} />,
   args: {
+    isOpen: true,
+    onClose: () => {},
     title: 'Large Modal',
     size: 'lg',
   },
@@ -55,6 +61,8 @@ export const Large: Story = {
 export const Mobile: Story = {
   render: (args) => <ModalWrapper {...args} />,
   args: {
+    isOpen: true,
+    onClose: () => {},
     title: 'Mobile Modal',
     size: 'md',
   },
@@ -74,6 +82,8 @@ export const WithLongContent: Story = {
     </ModalWrapper>
   ),
   args: {
+    isOpen: true,
+    onClose: () => {},
     title: 'Long Content Modal',
     size: 'md',
   },

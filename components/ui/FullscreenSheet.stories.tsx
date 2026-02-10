@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { FullscreenSheet } from './FullscreenSheet';
 import { Button } from './button';
 import { useState } from 'react';
@@ -13,12 +13,17 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  render: () => {
-    const [isOpen, setIsOpen] = useState(true);
+  args: {
+    isOpen: true,
+    onClose: () => {},
+    title: 'Fullscreen Sheet',
+  },
+  render: (args) => {
+    const [isOpen, setIsOpen] = useState(args.isOpen);
     return (
       <>
         <Button onClick={() => setIsOpen(true)}>Open Fullscreen</Button>
-        <FullscreenSheet isOpen={isOpen} onClose={() => setIsOpen(false)}>
+        <FullscreenSheet {...args} isOpen={isOpen} onClose={() => setIsOpen(false)}>
           <div className="h-full flex flex-col">
             <div className="flex-1 p-4">
               <h2 className="text-2xl font-bold mb-4">Fullscreen Content</h2>
@@ -35,12 +40,17 @@ export const Default: Story = {
 };
 
 export const Mobile: Story = {
-  render: () => {
-    const [isOpen, setIsOpen] = useState(true);
+  args: {
+    isOpen: true,
+    onClose: () => {},
+    title: 'Mobile Fullscreen',
+  },
+  render: (args) => {
+    const [isOpen, setIsOpen] = useState(args.isOpen);
     return (
       <div className="w-80">
         <Button onClick={() => setIsOpen(true)} className="w-full">Open</Button>
-        <FullscreenSheet isOpen={isOpen} onClose={() => setIsOpen(false)}>
+        <FullscreenSheet {...args} isOpen={isOpen} onClose={() => setIsOpen(false)}>
           <div className="p-4 space-y-4">
             <h2 className="text-xl font-bold">Mobile Fullscreen</h2>
             <p>Takes entire screen on mobile</p>

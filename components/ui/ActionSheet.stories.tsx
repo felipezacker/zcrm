@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { ActionSheet } from './ActionSheet';
 import { Button } from './button';
 import { useState } from 'react';
@@ -13,12 +13,18 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  render: () => {
-    const [isOpen, setIsOpen] = useState(true);
+  args: {
+    isOpen: true,
+    onClose: () => {},
+    title: 'Choose Action',
+    description: 'Select an action below',
+  },
+  render: (args) => {
+    const [isOpen, setIsOpen] = useState(args.isOpen);
     return (
       <>
         <Button onClick={() => setIsOpen(true)}>Open</Button>
-        <ActionSheet isOpen={isOpen} onClose={() => setIsOpen(false)}>
+        <ActionSheet {...args} isOpen={isOpen} onClose={() => setIsOpen(false)}>
           <div className="space-y-2 p-4">
             <Button className="w-full">Action 1</Button>
             <Button className="w-full">Action 2</Button>
@@ -31,12 +37,18 @@ export const Default: Story = {
 };
 
 export const Mobile: Story = {
-  render: () => {
-    const [isOpen, setIsOpen] = useState(true);
+  args: {
+    isOpen: true,
+    onClose: () => {},
+    title: 'Menu',
+    description: 'Select an option',
+  },
+  render: (args) => {
+    const [isOpen, setIsOpen] = useState(args.isOpen);
     return (
       <div className="w-80">
         <Button onClick={() => setIsOpen(true)} className="w-full">Menu</Button>
-        <ActionSheet isOpen={isOpen} onClose={() => setIsOpen(false)}>
+        <ActionSheet {...args} isOpen={isOpen} onClose={() => setIsOpen(false)}>
           <div className="space-y-2 p-4">
             <Button className="w-full" size="lg">Option 1</Button>
             <Button className="w-full" size="lg">Option 2</Button>
