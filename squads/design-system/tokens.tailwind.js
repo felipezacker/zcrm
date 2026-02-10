@@ -15,7 +15,7 @@
  * }
  */
 
-export default {
+const designTokens = {
   // Color palette
   colors: {
     // Neutral (Grays)
@@ -185,6 +185,8 @@ export default {
     '3xl': 'var(--space-3xl)',
   },
 };
+
+export default designTokens;
 
 /**
  * MIGRATION GUIDE
