@@ -15,7 +15,7 @@
  * }
  */
 
-module.exports = {
+export default {
   // Color palette
   colors: {
     // Neutral (Grays)
