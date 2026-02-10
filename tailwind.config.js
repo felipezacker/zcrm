@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 
 // Import design tokens from UX Designer (Phase D - Design System)
-const tokens = require('./squads/design-system/tokens.tailwind.js');
+import tokens from './squads/design-system/tokens.tailwind.js';
 
 const config = {
     content: [

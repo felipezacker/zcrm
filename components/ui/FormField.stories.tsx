@@ -1,118 +1,135 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { InputField, TextareaField, SelectField, CheckboxField, SubmitButton } from './FormField';
+import { useForm } from 'react-hook-form';
 
 const meta = {
-    title: 'UI/FormField',
-    component: InputField,
-    parameters: {
-        layout: 'centered',
-    },
-    tags: ['autodocs'],
-    argTypes: {
-        label: { control: 'text' },
-        placeholder: { control: 'text' },
-    },
-} satisfies Meta<typeof InputField>;
+  title: 'UI/Form Fields',
+  parameters: { layout: 'centered' },
+  tags: ['autodocs'],
+} satisfies Meta;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj;
 
-export const Input: Story = {
-    args: {
-        label: 'Email',
-        placeholder: 'email@example.com',
-    },
+export const InputDefault: Story = {
+  render: () => {
+    const { register, formState: { errors } } = useForm();
+    return (
+      <div className="w-96">
+        <InputField
+          label="Email"
+          type="email"
+          placeholder="Enter your email"
+          registration={register('email')}
+          error={errors.email as any}
+        />
+      </div>
+    );
+  },
 };
 
 export const InputWithError: Story = {
-    args: {
-        label: 'Email',
-        placeholder: 'email@example.com',
-        error: { type: 'required', message: 'Email is required' },
-    },
-};
-
-export const InputWithHint: Story = {
-    args: {
-        label: 'Password',
-        type: 'password',
-        placeholder: '••••••••',
-        hint: 'Must be at least 8 characters',
-    },
+  render: () => {
+    return (
+      <div className="w-96">
+        <InputField
+          label="Password"
+          type="password"
+          placeholder="Enter password"
+          error={{ type: 'required', message: 'Password is required' } as any}
+        />
+      </div>
+    );
+  },
 };
 
 export const Textarea: Story = {
-    render: () => (
-        <div className="w-[300px]">
-            <TextareaField
-                label="Description"
-                placeholder="Enter a description..."
-                rows={4}
-            />
-        </div>
-    ),
-    args: { label: 'Description' },
+  render: () => {
+    const { register } = useForm();
+    return (
+      <div className="w-96">
+        <TextareaField
+          label="Message"
+          placeholder="Enter your message"
+          registration={register('message')}
+        />
+      </div>
+    );
+  },
 };
 
 export const Select: Story = {
-    render: () => (
-        <div className="w-[300px]">
-            <SelectField
-                label="Country"
-                placeholder="Select a country"
-                options={[
-                    { value: 'br', label: 'Brazil' },
-                    { value: 'us', label: 'United States' },
-                    { value: 'uk', label: 'United Kingdom' },
-                ]}
-            />
-        </div>
-    ),
-    args: { label: 'Country' },
+  render: () => {
+    const { register } = useForm();
+    return (
+      <div className="w-96">
+        <SelectField
+          label="Choose option"
+          placeholder="Select one"
+          options={[
+            { value: 'opt1', label: 'Option 1' },
+            { value: 'opt2', label: 'Option 2' },
+            { value: 'opt3', label: 'Option 3' },
+          ]}
+          registration={register('option')}
+        />
+      </div>
+    );
+  },
 };
 
 export const Checkbox: Story = {
-    render: () => (
-        <div className="w-[300px]">
-            <CheckboxField
-                label="I agree to the terms and conditions"
-            />
-        </div>
-    ),
-    args: { label: 'Terms' },
+  render: () => {
+    const { register } = useForm();
+    return (
+      <div className="w-96">
+        <CheckboxField
+          label="I agree to terms"
+          registration={register('agree')}
+        />
+      </div>
+    );
+  },
 };
 
-export const SubmitButtons: Story = {
-    render: () => (
-        <div className="w-[300px] space-y-4">
-            <SubmitButton variant="primary">Save Changes</SubmitButton>
-            <SubmitButton variant="secondary">Cancel</SubmitButton>
-            <SubmitButton variant="danger">Delete</SubmitButton>
-            <SubmitButton isLoading loadingText="Saving...">Save</SubmitButton>
-        </div>
-    ),
-    args: { label: 'Submit' },
+export const SubmitButtonVariants: Story = {
+  render: () => (
+    <div className="w-96 space-y-4">
+      <SubmitButton variant="primary">Primary</SubmitButton>
+      <SubmitButton variant="secondary">Secondary</SubmitButton>
+      <SubmitButton variant="danger">Danger</SubmitButton>
+    </div>
+  ),
 };
 
-export const CompleteForm: Story = {
-    render: () => (
-        <div className="w-[400px] space-y-4 p-6 border rounded-lg">
-            <h2 className="text-lg font-semibold">Contact Form</h2>
-            <InputField label="Name" placeholder="Your name" required />
-            <InputField label="Email" type="email" placeholder="email@example.com" required />
-            <SelectField
-                label="Subject"
-                placeholder="Select a subject"
-                options={[
-                    { value: 'support', label: 'Technical Support' },
-                    { value: 'sales', label: 'Sales Inquiry' },
-                    { value: 'other', label: 'Other' },
-                ]}
-            />
-            <TextareaField label="Message" placeholder="Your message..." rows={4} />
-            <CheckboxField label="Subscribe to newsletter" />
-            <SubmitButton>Send Message</SubmitButton>
-        </div>
-    ),
-    args: { label: 'Form' },
+export const Mobile: Story = {
+  render: () => {
+    const { register } = useForm();
+    return (
+      <div className="w-80">
+        <InputField
+          label="Name"
+          placeholder="Your name"
+          registration={register('name')}
+        />
+      </div>
+    );
+  },
+  parameters: { viewport: { defaultViewport: 'mobileSE' } },
+};
+
+export const Dark: Story = {
+  render: () => {
+    const { register } = useForm();
+    return (
+      <div className="dark bg-slate-950 p-8 rounded w-96">
+        <InputField
+          label="Email"
+          type="email"
+          placeholder="Email in dark mode"
+          registration={register('email')}
+        />
+      </div>
+    );
+  },
 };

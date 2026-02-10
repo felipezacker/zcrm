@@ -2,6 +2,12 @@
 @import "tailwindcss";
 
 /* ========================================
+ * Design System Tokens (Phase 3 Integration)
+ * Imported from squads/design-system/tokens.css
+ * ======================================== */
+@import "../public/design-tokens.css";
+
+/* ========================================
  * Tailwind v4 Theme Configuration
  * Migrated from tailwind.config.js
  * ======================================== */

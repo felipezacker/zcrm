@@ -1,82 +1,79 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './card';
 import { Button } from './button';
 
 const meta = {
-    title: 'UI/Card',
-    component: Card,
-    parameters: {
-        layout: 'centered',
-    },
-    tags: ['autodocs'],
+  title: 'UI/Card',
+  component: Card,
+  tags: ['autodocs'],
 } satisfies Meta<typeof Card>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-    render: () => (
-        <Card className="w-[350px]">
-            <CardHeader>
-                <CardTitle>Card Title</CardTitle>
-                <CardDescription>Card description goes here</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p>Card content with useful information.</p>
-            </CardContent>
-            <CardFooter>
-                <Button>Action</Button>
-            </CardFooter>
-        </Card>
-    ),
+  render: () => (
+    <Card className="w-96">
+      <CardHeader>
+        <CardTitle>Card Title</CardTitle>
+        <CardDescription>Card description goes here</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p>This is the main content of the card.</p>
+      </CardContent>
+      <CardFooter>
+        <Button variant="outline">Cancel</Button>
+        <Button>Save</Button>
+      </CardFooter>
+    </Card>
+  ),
 };
 
-export const Simple: Story = {
-    render: () => (
-        <Card className="w-[350px] p-6">
-            <p>Simple card with just content.</p>
-        </Card>
-    ),
-};
-
-export const WithForm: Story = {
-    render: () => (
-        <Card className="w-[400px]">
-            <CardHeader>
-                <CardTitle>Create Account</CardTitle>
-                <CardDescription>Enter your details below</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div>
-                    <label className="text-sm font-medium">Email</label>
-                    <input className="w-full mt-1 px-3 py-2 border rounded-md" placeholder="email@example.com" />
-                </div>
-                <div>
-                    <label className="text-sm font-medium">Password</label>
-                    <input type="password" className="w-full mt-1 px-3 py-2 border rounded-md" placeholder="••••••••" />
-                </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-                <Button variant="outline">Cancel</Button>
-                <Button>Create</Button>
-            </CardFooter>
-        </Card>
-    ),
-};
-
-export const DarkMode: Story = {
-    render: () => (
-        <Card className="w-[350px]">
-            <CardHeader>
-                <CardTitle>Dark Mode Card</CardTitle>
-                <CardDescription>This card uses design tokens</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p>Content adapts to dark mode automatically.</p>
-            </CardContent>
-        </Card>
-    ),
-    parameters: {
-        backgrounds: { default: 'dark' },
+export const Mobile: Story = {
+  render: () => (
+    <div className="w-80">
+      <Card>
+        <CardHeader>
+          <CardTitle>Mobile Card</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Responsive card for mobile</p>
+        </CardContent>
+      </Card>
+    </div>
+  ),
+  parameters: {
+    viewport: {
+      defaultViewport: 'mobileSE',
     },
+  },
+};
+
+export const WithoutFooter: Story = {
+  render: () => (
+    <Card className="w-96">
+      <CardHeader>
+        <CardTitle>Simple Card</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>Just header and content.</p>
+      </CardContent>
+    </Card>
+  ),
+};
+
+export const Dark: Story = {
+  render: () => (
+    <div className="dark bg-slate-950 p-8 rounded">
+      <Card className="w-96">
+        <CardHeader>
+          <CardTitle>Dark Mode Card</CardTitle>
+          <CardDescription>Works with dark theme</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p>Card in dark mode</p>
+        </CardContent>
+      </Card>
+    </div>
+  ),
 };
