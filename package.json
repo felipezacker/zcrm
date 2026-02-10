@@ -11,8 +11,8 @@
     "start": "next start",
     "lint": "eslint --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
-    "test:run": "vitest run",
+    "test": "node test/load-env.cjs && vitest",
+    "test:run": "node test/load-env.cjs && vitest run",
     "smoke:integrations": "node scripts/smoke-integrations.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"

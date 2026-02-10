@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { generateUUID } from './uuid';
 import { getRunId } from './runId';
 import { assertNoSupabaseError, getSupabaseAdminClient, requireSupabaseData, withSupabaseRetry } from './supabaseAdmin';
 
@@ -328,7 +328,7 @@ export async function createSalesTeamFixtures(): Promise<SalesTeamFixtureBundle>
         organizationId: fx.organizationId,
         ownerId: user.userId,
         name: `AI Tools Contato Open ${user.firstName} ${runId}`,
-        email: `ai-tools.contact.open.${user.firstName.toLowerCase()}.${runId}.${randomUUID()}@example.com`,
+        email: `ai-tools.contact.open.${user.firstName.toLowerCase()}.${runId}.${generateUUID()}@example.com`,
       });
       fx.created.contactIds.push(openContact.contactId);
 
@@ -336,7 +336,7 @@ export async function createSalesTeamFixtures(): Promise<SalesTeamFixtureBundle>
         organizationId: fx.organizationId,
         ownerId: user.userId,
         name: `AI Tools Contato Won ${user.firstName} ${runId}`,
-        email: `ai-tools.contact.won.${user.firstName.toLowerCase()}.${runId}.${randomUUID()}@example.com`,
+        email: `ai-tools.contact.won.${user.firstName.toLowerCase()}.${runId}.${generateUUID()}@example.com`,
       });
       fx.created.contactIds.push(wonContact.contactId);
 
@@ -344,7 +344,7 @@ export async function createSalesTeamFixtures(): Promise<SalesTeamFixtureBundle>
         organizationId: fx.organizationId,
         ownerId: user.userId,
         name: `AI Tools Contato Lost ${user.firstName} ${runId}`,
-        email: `ai-tools.contact.lost.${user.firstName.toLowerCase()}.${runId}.${randomUUID()}@example.com`,
+        email: `ai-tools.contact.lost.${user.firstName.toLowerCase()}.${runId}.${generateUUID()}@example.com`,
       });
       fx.created.contactIds.push(lostContact.contactId);
 

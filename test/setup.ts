@@ -1,4 +1,3 @@
-import { loadEnvFile } from './helpers/env';
 import { cleanupFixtures } from './helpers/fixtures';
 import { getRunId } from './helpers/runId';
 
@@ -49,24 +48,19 @@ console.error = (...args: unknown[]) => {
   originalConsoleError(...args);
 };
 
-const originalStderrWrite = process.stderr.write.bind(process.stderr);
-process.stderr.write = ((chunk: any, ...rest: any[]) => {
-  const text = typeof chunk === 'string' ? chunk : Buffer.isBuffer(chunk) ? chunk.toString('utf8') : String(chunk);
-  if (SUPPRESSED_STDERR_PATTERNS.some((r) => r.test(text))) {
-    return true;
-  }
-  return originalStderrWrite(chunk, ...rest);
-}) as any;
+// Only patch stderr if available (not in browser context)
+if (typeof process !== 'undefined' && process.stderr) {
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+  process.stderr.write = ((chunk: any, ...rest: any[]) => {
+    const text = typeof chunk === 'string' ? chunk : Buffer.isBuffer(chunk) ? chunk.toString('utf8') : String(chunk);
+    if (SUPPRESSED_STDERR_PATTERNS.some((r) => r.test(text))) {
+      return true;
+    }
+    return originalStderrWrite(chunk, ...rest);
+  }) as any;
+}
 
-// Prefer envs from THIS project folder so crmia-next can be moved to its own repo.
-// (When running inside the monorepo, we keep the old root .env as a fallback.)
-loadEnvFile(new URL('../.env', import.meta.url).pathname);
-loadEnvFile(new URL('../.env.local', import.meta.url).pathname, { override: true });
-
-// Monorepo fallback (no override)
-loadEnvFile(new URL('../../.env', import.meta.url).pathname);
-loadEnvFile(new URL('../../.env.local', import.meta.url).pathname);
-
+// Env files are loaded in setup.node.ts (Node-only context)
 // Best-effort cleanup: if a prior run crashed, make a quick attempt to remove leftovers.
 // This won't block tests if cleanup fails (it can fail due to missing tables in dev).
 beforeAll(async () => {
