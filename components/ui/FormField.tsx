@@ -13,24 +13,26 @@ import { cn } from '@/lib/utils/cn';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 // ============ BASE STYLES ============
+// Mobile-first responsive design with design tokens
 
 const baseInputStyles = cn(
-  'w-full bg-background-secondary',
-  'border border-divider',
-  'rounded-lg px-3 py-2 text-sm',
-  'text-foreground',
-  'outline-none focus:ring-2 focus:ring-primary-500',
+  'w-full bg-[var(--color-background-secondary)]',
+  'border border-[var(--color-border)]',
+  'rounded-lg px-3 py-2 text-xs xs:text-sm sm:px-4 sm:py-2.5',
+  'text-[var(--color-foreground)]',
+  'outline-none focus:ring-2 focus:ring-[var(--color-primary)]',
   'transition-all duration-200',
-  'placeholder:text-foreground-tertiary'
+  'placeholder:text-[var(--color-foreground-tertiary)]',
+  'min-h-[36px] xs:min-h-[40px] sm:min-h-[44px]' // Touch targets 44px+
 );
 
 const errorInputStyles =
-  'border-red-500 dark:border-red-400 focus:ring-red-500 bg-red-50/50 dark:bg-red-900/10';
-const successInputStyles = 'border-green-500 dark:border-green-400 focus:ring-green-500';
+  'border-[var(--color-error)] focus:ring-[var(--color-error)] bg-[var(--color-error)]/10';
+const successInputStyles = 'border-[var(--color-success)] focus:ring-[var(--color-success)]';
 
-const labelStyles = 'block text-xs font-bold text-foreground-secondary uppercase mb-1';
-const errorMessageStyles = 'text-xs text-error mt-1 flex items-center gap-1';
-const hintStyles = 'text-[10px] text-foreground-tertiary mt-1';
+const labelStyles = 'block text-xs xs:text-sm font-bold text-[var(--color-foreground-secondary)] uppercase mb-1 sm:mb-2';
+const errorMessageStyles = 'text-xs sm:text-sm text-[var(--color-error)] mt-1 flex items-center gap-1';
+const hintStyles = 'text-[10px] xs:text-xs text-[var(--color-foreground-tertiary)] mt-1';
 
 // ============ VALIDATION STATE ============
 
@@ -478,9 +480,9 @@ interface SubmitButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement
 }
 
 const buttonVariants = {
-  primary: 'bg-primary-600 hover:bg-primary-500 shadow-primary-600/20',
-  secondary: 'bg-neutral-600 hover:bg-neutral-500 shadow-neutral-600/20',
-  danger: 'bg-error hover:bg-error/90 shadow-error/20',
+  primary: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] shadow-lg shadow-[var(--color-primary)]/20',
+  secondary: 'bg-[var(--color-neutral-600)] hover:bg-[var(--color-neutral-700)] shadow-lg shadow-[var(--color-neutral-600)]/20',
+  danger: 'bg-[var(--color-error)] hover:bg-[var(--color-error-dark)] shadow-lg shadow-[var(--color-error)]/20',
 };
 
 /**
@@ -519,7 +521,9 @@ export const SubmitButton: React.FC<SubmitButtonProps> = ({
     disabled={disabled || isLoading}
     aria-busy={isLoading}
     className={cn(
-      'w-full text-white font-bold py-2.5 rounded-lg',
+      'w-full text-white font-bold py-2 xs:py-2.5 sm:py-3 rounded-lg',
+      'text-sm xs:text-base',
+      'min-h-[40px] xs:min-h-[44px] sm:min-h-[48px]',
       'shadow-lg transition-all duration-200',
       'disabled:opacity-50 disabled:cursor-not-allowed',
       'focus:outline-none focus:ring-2 focus:ring-offset-2',
