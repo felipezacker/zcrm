@@ -2,7 +2,7 @@
 
 **Story ID:** TECH-004  
 **Epic:** TECH-DEBT-001  
-**Status:** Ready for Dev  
+**Status:** ✅ Complete  
 **Priority:** P3 - Médio  
 **Estimated:** 3h  
 **Agent:** @dev (Dex)
@@ -15,10 +15,10 @@ Como **desenvolvedor**, preciso que **todos os arquivos de componentes sigam Pas
 
 ## Acceptance Criteria
 
-- [ ] Todos componentes em `components/ui/` usam PascalCase
-- [ ] Imports atualizados em todos os arquivos que referenciam os renomeados
-- [ ] `npm run build` passa sem erros
-- [ ] `npm run typecheck` passa sem erros
+- [x] Todos componentes em `components/ui/` usam PascalCase
+- [x] Imports atualizados em todos os arquivos que referenciam os renomeados
+- [x] `npm run build` passa sem erros
+- [x] `npm run typecheck` passa sem erros
 
 ## Dev Notes
 
@@ -49,17 +49,17 @@ Como **desenvolvedor**, preciso que **todos os arquivos de componentes sigam Pas
 
 ## Tasks
 
-- [ ] 1. Listar todos os imports dos componentes a renomear
-- [ ] 2. Renomear arquivos com `git mv` (um por um)
-- [ ] 3. Atualizar imports em todos os arquivos referenciados
-- [ ] 4. Run `npm run typecheck`
-- [ ] 5. Run `npm run build`
+- [x] 1. Listar todos os imports dos componentes a renomear
+- [x] 2. Renomear arquivos com `git mv` (um por um)
+- [x] 3. Atualizar imports em todos os arquivos referenciados
+- [x] 4. Run `npm run typecheck`
+- [x] 5. Run `npm run build`
 
 ## Testing
 
-- [ ] Build sem erros
-- [ ] Typecheck sem erros
-- [ ] Todos imports resolvem corretamente
+- [x] Build sem erros
+- [x] Typecheck sem erros
+- [x] Todos imports resolvem corretamente
 
 ## Dev Agent Record
 

@@ -13,7 +13,7 @@ import { AIProcessingModal, ProcessingStep, SimulatorPhase } from './Modals/AIPr
 import { fetchRegistry, fetchTemplateJourney } from '@/lib/templates/registryService';
 import { RegistryIndex, RegistryTemplate, JourneyDefinition } from '@/types';
 import { OFFICIAL_JOURNEYS } from '@/lib/templates/journey-templates';
-import { MODAL_OVERLAY_CLASS } from '@/components/ui/modalStyles';
+import { MODAL_OVERLAY_CLASS } from '@/components/ui/ModalStyles';
 
 interface BoardCreationWizardProps {
   isOpen: boolean;

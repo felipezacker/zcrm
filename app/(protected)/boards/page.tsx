@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { SkeletonPipeline } from '@/components/ui/skeleton'
+import { SkeletonPipeline } from '@/components/ui/Skeleton'
 
 const BoardsPage = dynamic(
     () => import('@/features/boards/BoardsPage').then(m => ({ default: m.BoardsPage })),

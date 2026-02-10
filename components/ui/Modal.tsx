@@ -20,7 +20,7 @@ import {
   MODAL_PANEL_BASE_CLASS,
   MODAL_TITLE_CLASS,
   MODAL_VIEWPORT_CAP_CLASS,
-} from './modalStyles';
+} from './ModalStyles';
 
 interface ModalProps {
   isOpen: boolean;

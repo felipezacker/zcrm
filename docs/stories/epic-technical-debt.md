@@ -3,7 +3,7 @@
 **Epic ID:** TECH-DEBT-001  
 **Projeto:** NossoCRM (zcrm-v1)  
 **Data:** 2026-02-09  
-**Status:** 🟡 Ready for Development
+**Status:** 🟢 In Progress (Fase 1 Complete, Fase 2 Ready)
 
 ---
 
@@ -63,21 +63,20 @@ Resolver os 35 débitos técnicos identificados no Brownfield Discovery, melhora
 
 ## Stories (Resumo)
 
-### Fase 1: Quick Wins
-1. **TECH-001:** Adicionar índices de performance no DB
-2. **TECH-002:** Implementar Error Boundaries
-3. **TECH-003:** Criar Loading Skeletons
-4. **TECH-004:** Adicionar índices em FKs
-5. **TECH-005:** Padronizar naming de componentes
-6. **TECH-006:** Limpeza básica (.DS_Store, gitignore)
+### Fase 1: Quick Wins ✅ COMPLETA
+1. **TECH-001:** ✅ Adicionar índices de performance no DB
+2. **TECH-002:** ✅ Implementar Error Boundaries
+3. **TECH-003:** ✅ Criar Loading Skeletons
+4. **TECH-004:** ✅ Padronizar naming de componentes (PascalCase)
+5. **TECH-005:** ✅ Limpeza básica (.DS_Store, gitignore)
 
-### Fase 2: Fundação
-7. **TECH-007:** Habilitar TypeScript strict mode
-8. **TECH-008:** Revisar e corrigir políticas RLS
-9. **TECH-009:** Documentar Design System
-10. **TECH-010:** Implementar testes críticos
-11. **TECH-011:** Refatorar FormField
-12. **TECH-012:** Consolidar Contexts
+### Fase 2: Fundação — Ready for Dev
+7. **TECH-007:** Habilitar TypeScript strict mode (@dev + @architect, 12h)
+8. **TECH-008:** Revisar e corrigir políticas RLS (@data-engineer, 6h)
+9. **TECH-009:** Documentar Design System (@ux-design-expert, 20h)
+10. **TECH-010:** Implementar testes críticos (@dev + @qa, 30h)
+11. **TECH-011:** Refatorar FormField (@dev, 12h)
+12. **TECH-012:** Consolidar Contexts (@dev + @architect, 12h)
 
 ### Fase 3: Otimização
 13. **TECH-013:** Implementar Storybook

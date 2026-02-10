@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plus, Search, LayoutGrid, Table as TableIcon, User, Settings, Lightbulb, Download } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { Board } from '@/types';
 import { BoardSelector } from '../BoardSelector';
 

@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { SkeletonList } from '@/components/ui/skeleton'
+import { SkeletonList } from '@/components/ui/Skeleton'
 
 const ContactsPage = dynamic(
     () => import('@/features/contacts/ContactsPage').then(m => ({ default: m.ContactsPage })),

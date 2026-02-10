@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs';
-import { Alert, AlertTitle, AlertDescription } from './alert';
+import { Alert, AlertTitle, AlertDescription } from './Alert';
 import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
 
 const meta = {

@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs';
-import { Button } from './button';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './card';
-import { Badge } from './badge';
-import { Avatar, AvatarImage, AvatarFallback } from './avatar';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
+import { Button } from './Button';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './Card';
+import { Badge } from './Badge';
+import { Avatar, AvatarImage, AvatarFallback } from './Avatar';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs';
 
 const meta = {
   title: 'Compositions/Complex',

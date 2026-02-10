@@ -2,7 +2,7 @@
 
 **Story ID:** TECH-005  
 **Epic:** TECH-DEBT-001  
-**Status:** Ready for Dev  
+**Status:** ✅ Complete  
 **Priority:** P4 - Baixo  
 **Estimated:** 1h  
 **Agent:** @dev (Dex)
@@ -15,9 +15,9 @@ Como **desenvolvedor**, preciso **limpar arquivos desnecessários do repositóri
 
 ## Acceptance Criteria
 
-- [ ] Arquivos `.DS_Store` removidos do Git
-- [ ] `.gitignore` atualizado com regras para `.DS_Store`
-- [ ] `npm run build` passa
+- [x] Arquivos `.DS_Store` removidos do Git
+- [x] `.gitignore` atualizado com regras para `.DS_Store`
+- [x] `npm run build` passa
 
 ## Dev Notes
 
@@ -38,15 +38,15 @@ echo "**/.DS_Store" >> .gitignore
 
 ## Tasks
 
-- [ ] 1. Verificar `.gitignore` atual
-- [ ] 2. Adicionar `.DS_Store` e `**/.DS_Store` ao `.gitignore`
-- [ ] 3. Remover `.DS_Store` do git tracking (`git rm --cached`)
-- [ ] 4. Run `npm run build`
+- [x] 1. Verificar `.gitignore` atual
+- [x] 2. Adicionar `.DS_Store` e `**/.DS_Store` ao `.gitignore`
+- [x] 3. Remover `.DS_Store` do git tracking (`git rm --cached`) — nenhum tracked
+- [x] 4. Run `npm run build`
 
 ## Testing
 
-- [ ] `.DS_Store` não aparece em `git status`
-- [ ] Build passa
+- [x] `.DS_Store` não aparece em `git status`
+- [x] Build passa
 
 ## Dev Agent Record
 

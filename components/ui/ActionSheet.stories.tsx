@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs';
 import { ActionSheet } from './ActionSheet';
-import { Button } from './button';
+import { Button } from './Button';
 import { useState } from 'react';
 
 const meta = {

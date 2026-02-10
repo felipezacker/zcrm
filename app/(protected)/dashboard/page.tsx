@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { SkeletonDashboard } from '@/components/ui/skeleton'
+import { SkeletonDashboard } from '@/components/ui/Skeleton'
 
 // Dynamic import with contextual skeleton loading
 const DashboardPage = dynamic(

@@ -40,35 +40,72 @@ DROP POLICY IF EXISTS "audit_logs_org_select" ON public.audit_logs;
 DROP POLICY IF EXISTS "audit_logs_insert" ON public.audit_logs;
 DROP POLICY IF EXISTS "rate_limits_service_only" ON public.rate_limits;
 
--- Restore original permissive policies
+-- Restore original permissive policies (idempotent: drop if exists before create)
+DROP POLICY IF EXISTS "authenticated_access" ON public.organizations;
 CREATE POLICY "authenticated_access" ON public.organizations FOR ALL TO authenticated USING (deleted_at IS NULL) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "profiles_select" ON public.profiles;
 CREATE POLICY "profiles_select" ON public.profiles FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.boards;
 CREATE POLICY "Enable read access for authenticated users" ON public.boards FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable insert access for authenticated users" ON public.boards;
 CREATE POLICY "Enable insert access for authenticated users" ON public.boards FOR INSERT TO authenticated WITH CHECK (true);
+DROP POLICY IF EXISTS "Enable update access for authenticated users" ON public.boards;
 CREATE POLICY "Enable update access for authenticated users" ON public.boards FOR UPDATE TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable delete access for authenticated users" ON public.boards;
 CREATE POLICY "Enable delete access for authenticated users" ON public.boards FOR DELETE TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.board_stages;
 CREATE POLICY "Enable read access for authenticated users" ON public.board_stages FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable insert access for authenticated users" ON public.board_stages;
 CREATE POLICY "Enable insert access for authenticated users" ON public.board_stages FOR INSERT TO authenticated WITH CHECK (true);
+DROP POLICY IF EXISTS "Enable update access for authenticated users" ON public.board_stages;
 CREATE POLICY "Enable update access for authenticated users" ON public.board_stages FOR UPDATE TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable delete access for authenticated users" ON public.board_stages;
 CREATE POLICY "Enable delete access for authenticated users" ON public.board_stages FOR DELETE TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.lifecycle_stages;
 CREATE POLICY "Enable all access for authenticated users" ON public.lifecycle_stages FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.crm_companies;
 CREATE POLICY "Enable all access for authenticated users" ON public.crm_companies FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.contacts;
 CREATE POLICY "Enable all access for authenticated users" ON public.contacts FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.products;
 CREATE POLICY "Enable all access for authenticated users" ON public.products FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.deals;
 CREATE POLICY "Enable all access for authenticated users" ON public.deals FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.deal_items;
 CREATE POLICY "Enable all access for authenticated users" ON public.deal_items FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.activities;
 CREATE POLICY "Enable all access for authenticated users" ON public.activities FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.tags;
 CREATE POLICY "Enable all access for authenticated users" ON public.tags FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.custom_field_definitions;
 CREATE POLICY "Enable all access for authenticated users" ON public.custom_field_definitions FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.leads;
 CREATE POLICY "Enable all access for authenticated users" ON public.leads FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "deal_notes_access" ON public.deal_notes;
 CREATE POLICY "deal_notes_access" ON public.deal_notes FOR ALL TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "deal_files_access" ON public.deal_files;
 CREATE POLICY "deal_files_access" ON public.deal_files FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.ai_conversations;
 CREATE POLICY "Enable all access for authenticated users" ON public.ai_conversations FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.ai_decisions;
 CREATE POLICY "Enable all access for authenticated users" ON public.ai_decisions FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.ai_audio_notes;
 CREATE POLICY "Enable all access for authenticated users" ON public.ai_audio_notes FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.ai_suggestion_interactions;
 CREATE POLICY "Enable all access for authenticated users" ON public.ai_suggestion_interactions FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.system_notifications;
 CREATE POLICY "Enable all access for authenticated users" ON public.system_notifications FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.rate_limits;
 CREATE POLICY "Enable all access for authenticated users" ON public.rate_limits FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.user_consents;
 CREATE POLICY "Enable all access for authenticated users" ON public.user_consents FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.audit_logs;
 CREATE POLICY "Enable all access for authenticated users" ON public.audit_logs FOR ALL TO authenticated USING (true);
-CREATE POLICY "Enable all access for authenticated users" ON security_alerts FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.security_alerts;
+CREATE POLICY "Enable all access for authenticated users" ON public.security_alerts FOR ALL TO authenticated USING (true);

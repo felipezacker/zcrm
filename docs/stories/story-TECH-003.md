@@ -2,7 +2,7 @@
 
 **Story ID:** TECH-003  
 **Epic:** TECH-DEBT-001  
-**Status:** Ready for Dev  
+**Status:** ✅ Complete  
 **Priority:** P2 - Alto  
 **Estimated:** 6h  
 **Agent:** @dev (Dex)
@@ -15,14 +15,14 @@ Como **usuário**, preciso ver **skeletons de loading ao invés de telas em bran
 
 ## Acceptance Criteria
 
-- [ ] Componente `Skeleton` base criado em `components/ui/`
-- [ ] Variantes: `SkeletonCard`, `SkeletonList`, `SkeletonTable`
-- [ ] Aplicado na listagem de deals (pipeline)
-- [ ] Aplicado na listagem de contatos
-- [ ] Aplicado no dashboard
-- [ ] Animação pulse suave com Tailwind
-- [ ] Dark mode compatível
-- [ ] `npm run build` passa sem erros
+- [x] Componente `Skeleton` base criado em `components/ui/`
+- [x] Variantes: `SkeletonCard`, `SkeletonList`, `SkeletonTable`
+- [x] Aplicado na listagem de deals (pipeline)
+- [x] Aplicado na listagem de contatos
+- [x] Aplicado no dashboard
+- [x] Animação pulse suave com Tailwind
+- [x] Dark mode compatível
+- [x] `npm run build` passa sem erros
 
 ## Dev Notes
 
@@ -51,19 +51,19 @@ export function SkeletonTable({ rows = 5, cols = 4 }) { /* table skeleton */ }
 
 ## Tasks
 
-- [ ] 1. Criar `components/ui/skeleton.tsx` com `Skeleton` base
-- [ ] 2. Adicionar variantes: `SkeletonCard`, `SkeletonList`, `SkeletonTable`
-- [ ] 3. Aplicar `SkeletonList` na listagem de deals/pipeline
-- [ ] 4. Aplicar `SkeletonList` na listagem de contatos
-- [ ] 5. Aplicar `SkeletonCard` nos cards do dashboard
-- [ ] 6. Testar dark mode
-- [ ] 7. Run `npm run build`
+- [x] 1. Criar `components/ui/skeleton.tsx` com `Skeleton` base
+- [x] 2. Adicionar variantes: `SkeletonCard`, `SkeletonList`, `SkeletonTable`
+- [x] 3. Aplicar `SkeletonList` na listagem de deals/pipeline
+- [x] 4. Aplicar `SkeletonList` na listagem de contatos
+- [x] 5. Aplicar `SkeletonCard` nos cards do dashboard
+- [x] 6. Testar dark mode
+- [x] 7. Run `npm run build`
 
 ## Testing
 
-- [ ] Skeleton renderiza com animação pulse
-- [ ] Dark mode funciona
-- [ ] Build passa sem erros
+- [x] Skeleton renderiza com animação pulse
+- [x] Dark mode funciona
+- [x] Build passa sem erros
 
 ## Dev Agent Record
 

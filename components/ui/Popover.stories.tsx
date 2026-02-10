@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs';
-import { Popover, PopoverTrigger, PopoverContent } from './popover';
-import { Button } from './button';
+import { Popover, PopoverTrigger, PopoverContent } from './Popover';
+import { Button } from './Button';
 
 const meta = {
   title: 'UI/Popover',

@@ -2,7 +2,7 @@
 
 **Story ID:** TECH-002  
 **Epic:** TECH-DEBT-001  
-**Status:** Ready for Dev  
+**Status:** ✅ Complete  
 **Priority:** P2 - Alto  
 **Estimated:** 6h  
 **Agent:** @dev (Dex)
@@ -15,12 +15,12 @@ Como **usuário**, preciso que **erros em componentes individuais não quebrem a
 
 ## Acceptance Criteria
 
-- [ ] Error Boundary genérico criado em `components/`
-- [ ] Error Boundary aplicado em cada feature module
-- [ ] Fallback UI mostra mensagem amigável + botão de retry
-- [ ] Erros são logados (console em dev, audit em prod)
-- [ ] `npm run build` passa sem erros
-- [ ] Testes unitários adicionados
+- [x] Error Boundary genérico criado em `components/`
+- [x] Error Boundary aplicado em cada feature module
+- [x] Fallback UI mostra mensagem amigável + botão de retry
+- [x] Erros são logados (console em dev, audit em prod)
+- [x] `npm run build` passa sem erros
+- [x] Testes unitários adicionados
 
 ## Dev Notes
 
@@ -47,18 +47,18 @@ Como **usuário**, preciso que **erros em componentes individuais não quebrem a
 
 ## Tasks
 
-- [ ] 1. Criar `components/ErrorBoundary.tsx` (class component genérico)
-- [ ] 2. Criar `components/FeatureErrorBoundary.tsx` (wrapper com UI)
-- [ ] 3. Aplicar Error Boundary no layout protegido
-- [ ] 4. Adicionar testes para ErrorBoundary
-- [ ] 5. Run `npm run build` e `npm run typecheck`
+- [x] 1. Criar `components/ErrorBoundary.tsx` (class component genérico)
+- [x] 2. Criar `components/FeatureErrorBoundary.tsx` (wrapper com UI)
+- [x] 3. Aplicar Error Boundary no layout protegido
+- [x] 4. Adicionar testes para ErrorBoundary
+- [x] 5. Run `npm run build` e `npm run typecheck`
 
 ## Testing
 
-- [ ] Error Boundary captura erros de render
-- [ ] Fallback UI renderiza corretamente
-- [ ] Botão retry funciona
-- [ ] Build passa sem erros
+- [x] Error Boundary captura erros de render
+- [x] Fallback UI renderiza corretamente
+- [x] Botão retry funciona
+- [x] Build passa sem erros
 
 ## Dev Agent Record
 

@@ -2,7 +2,7 @@
 
 **Story ID:** TECH-001  
 **Epic:** TECH-DEBT-001  
-**Status:** Ready for Dev  
+**Status:** ✅ Complete  
 **Priority:** P1 - Crítico  
 **Estimated:** 3h  
 **Agent:** @dev (Dex)
@@ -15,10 +15,10 @@ Como **desenvolvedor**, preciso adicionar **índices de performance nas queries 
 
 ## Acceptance Criteria
 
-- [ ] Índices criados em migration separada
-- [ ] Nenhuma query de listagem faz full table scan
-- [ ] Migration é idempotente (IF NOT EXISTS)
-- [ ] `npm run build` passa sem erros
+- [x] Índices criados em migration separada
+- [x] Nenhuma query de listagem faz full table scan
+- [x] Migration é idempotente (IF NOT EXISTS)
+- [x] `npm run build` passa sem erros
 
 ## Dev Notes
 
@@ -66,16 +66,16 @@ Criar: `supabase/migrations/20260209000000_add_performance_indexes_v2.sql`
 
 ## Tasks
 
-- [ ] 1. Verificar índices existentes em `20260205000000_add_performance_indexes.sql`
-- [ ] 2. Criar migration `20260209000000_add_performance_indexes_v2.sql` com índices faltantes
-- [ ] 3. Verificar a migration é válida (usar IF NOT EXISTS)
-- [ ] 4. Run `npm run build` para garantir nada quebrou
+- [x] 1. Verificar índices existentes em `20260205000000_add_performance_indexes.sql`
+- [x] 2. Criar migration `20260209000000_add_performance_indexes_v2.sql` com índices faltantes
+- [x] 3. Verificar a migration é válida (usar IF NOT EXISTS)
+- [x] 4. Run `npm run build` para garantir nada quebrou
 
 ## Testing
 
-- [ ] Migration SQL é sintaticamente válida
-- [ ] Usa IF NOT EXISTS para idempotência
-- [ ] Não duplica índices existentes
+- [x] Migration SQL é sintaticamente válida
+- [x] Usa IF NOT EXISTS para idempotência
+- [x] Não duplica índices existentes
 
 ## Dev Agent Record
 
