@@ -409,9 +409,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       ) : null}
 
       {/* Main Content Wrapper */}
-      <div className="flex-1 flex min-w-0 overflow-hidden relative">
+      <div className="flex-1 w-full flex min-w-0 overflow-hidden relative">
         {/* Middle Content (Header + Page) */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        <div className="flex-1 w-full flex flex-col min-w-0 overflow-hidden relative">
           {/* Ambient background glow */}
           <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none" aria-hidden="true">
             <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-primary-500/10 rounded-full blur-[100px]"></div>
@@ -456,7 +456,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           <main
             id="main-content"
-            className="flex-1 overflow-auto p-6 pb-[calc(1.5rem+var(--app-bottom-nav-height,0px)+var(--app-safe-area-bottom,0px))] relative scroll-smooth"
+            className="flex-1 w-full overflow-auto p-6 pb-[calc(1.5rem+var(--app-bottom-nav-height,0px)+var(--app-safe-area-bottom,0px))] relative scroll-smooth"
             tabIndex={-1}
           >
             {children}
