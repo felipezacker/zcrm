@@ -133,6 +133,11 @@ export const Modal: React.FC<ModalProps> = ({
           sizeClasses[size],
           className
         )}
+        style={{
+          width: '90vw',
+          maxWidth: size === 'sm' ? '384px' : size === 'md' ? '448px' : size === 'lg' ? '512px' : '576px',
+          minWidth: '300px'
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className={MODAL_HEADER_CLASS}>
