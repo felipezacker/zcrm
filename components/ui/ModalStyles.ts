@@ -12,11 +12,11 @@
 export const MODAL_OVERLAY_CLASS =
   // Use a very high z-index so modals never render behind fixed sidebars/overlays.
   // Mobile-first: full width padding on mobile, larger padding on desktop
-  // NOTE: Avoid left offset - let modal center naturally with mx-auto
-  'fixed inset-0 z-[9999] flex items-stretch sm:items-center justify-center bg-[rgba(15,23,42,0.6)] backdrop-blur-sm p-2 xs:p-3 sm:p-4';
+  // flex items-center center both horizontally and vertically
+  'fixed inset-0 z-[9999] flex items-center justify-center bg-[rgba(15,23,42,0.6)] backdrop-blur-sm p-2 xs:p-3 sm:p-4';
 
 export const MODAL_PANEL_BASE_CLASS =
-  'bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl w-full flex flex-col overflow-hidden rounded-lg xs:rounded-xl sm:rounded-2xl mx-auto';
+  'bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl flex flex-col overflow-hidden rounded-lg xs:rounded-xl sm:rounded-2xl';
 
 // Hard caps to avoid overflow. `dvh` is more stable on mobile browser chrome than `vh`.
 export const MODAL_VIEWPORT_CAP_CLASS =
