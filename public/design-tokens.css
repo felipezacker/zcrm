@@ -173,10 +173,39 @@
 
 /* ============================================================================
    DARK MODE OVERRIDES
-   Applied when [data-theme="dark"] or prefers-color-scheme: dark
+   Applied when [data-theme="dark"] or .dark (Tailwind) class
    ========================================================================== */
 
 [data-theme="dark"],
+.dark {
+  :root {
+    /* Colors */
+    --color-background: #0f172a;
+    --color-background-secondary: #1e293b;
+    --color-surface: #0f172a;
+    --color-surface-hover: #1e293b;
+
+    --color-foreground: #f8fafc;
+    --color-foreground-secondary: #cbd5e1;
+    --color-foreground-tertiary: #94a3b8;
+
+    --color-divider: #334155;
+    --color-border: #475569;
+
+    /* Status Colors - Dark Variants */
+    --color-success: #10b981;
+    --color-error: #ef4444;
+    --color-warning: #f59e0b;
+
+    /* Component Overrides */
+    --card-bg: #1e293b;
+    --modal-bg: #1e293b;
+    --input-bg: #0f172a;
+    --input-border: #334155;
+  }
+}
+
+/* Media query for prefers-color-scheme (separate from selector list) */
 @media (prefers-color-scheme: dark) {
   :root {
     /* Colors */
