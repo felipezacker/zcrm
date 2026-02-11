@@ -62,9 +62,16 @@ export async function updateSession(request: NextRequest) {
     )
 
     // Refreshing the auth token
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    let user = null
+    try {
+        const { data: authData, error: authError } = await supabase.auth.getUser()
+        if (authError) {
+            console.warn('[proxy] auth.getUser() error:', authError.message)
+        }
+        user = authData?.user || null
+    } catch (err) {
+        console.warn('[proxy] auth.getUser() exception:', err)
+    }
 
     // ---------------------------------------------------------------------
     // Setup guard: se a instância não foi inicializada, forçar /setup

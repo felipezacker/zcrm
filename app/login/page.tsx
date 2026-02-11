@@ -28,15 +28,20 @@ export default function LoginPage() {
                 throw new Error('Supabase não configurado. Configure as variáveis de ambiente.')
             }
 
-            const { error } = await supabase.auth.signInWithPassword({
+            console.log('🔐 Login attempt:', { email })
+            const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             })
 
+            console.log('🔐 Login response:', { data, error })
+
             if (error) throw error
             router.push('/dashboard')
         } catch (err) {
-            setError(getErrorMessage(err))
+            const errorMsg = getErrorMessage(err)
+            console.error('❌ Login error:', { err, errorMsg })
+            setError(errorMsg)
         } finally {
             setLoading(false)
         }
