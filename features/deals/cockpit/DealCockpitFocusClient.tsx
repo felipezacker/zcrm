@@ -86,7 +86,7 @@ export default function DealCockpitFocusClient({ dealId }: { dealId: string }) {
         onMoveStage={onMoveStage}
         onMarkWon={onMarkWon}
         onMarkLost={onMarkLost}
-        onAddActivity={addActivity}
+        onAddActivity={(a) => addActivity(a as Omit<Activity, 'id' | 'createdAt'>)}
         onUpdateActivity={updateActivity}
         onClose={() => router.back()}
       />
