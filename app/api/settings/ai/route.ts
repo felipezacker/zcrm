@@ -50,10 +50,12 @@ export async function GET() {
     return json({ error: 'Profile not found' }, 404);
   }
 
-  // Use RPC for decrypted AI keys (keys are encrypted at-rest)
+  // Fetch org AI settings directly (note: keys may be encrypted at-rest)
   const { data: orgSettings, error: orgError } = await supabase
-    .rpc('get_org_ai_keys', { p_org_id: profile.organization_id })
-    .maybeSingle() as { data: { ai_provider: string; ai_model: string; ai_google_key: string | null; ai_openai_key: string | null; ai_anthropic_key: string | null; ai_enabled: boolean } | null; error: any };
+    .from('organization_settings')
+    .select('ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key, ai_enabled')
+    .eq('organization_id', profile.organization_id)
+    .maybeSingle();
 
   if (orgError) {
     return json({ error: orgError.message }, 500);
