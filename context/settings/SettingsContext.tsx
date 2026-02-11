@@ -404,6 +404,9 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       setError(message);
       throw new Error(message);
     }
+
+    // Invalidate AI config cache so next mount/effect refetches fresh data from backend
+    aiConfigLoadedForUserRef.current = null;
   }, []);
 
   const setAiProvider = useCallback(
