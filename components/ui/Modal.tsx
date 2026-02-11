@@ -9,6 +9,7 @@
  * - Escape key closes modal
  */
 import React, { useId, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { FocusTrap, useFocusReturn } from '@/lib/a11y';
@@ -114,8 +115,6 @@ export const Modal: React.FC<ModalProps> = ({
     }
   }, [onClose]);
 
-  if (!isOpen) return null;
-
   const content = (
     <div
       className={MODAL_OVERLAY_CLASS}
@@ -154,7 +153,9 @@ export const Modal: React.FC<ModalProps> = ({
     </div>
   );
 
-  return focusTrapEnabled ? (
+  if (!isOpen) return null;
+
+  const modalContent = focusTrapEnabled ? (
     <FocusTrap
       active={isOpen}
       onEscape={handleEscape}
@@ -166,6 +167,11 @@ export const Modal: React.FC<ModalProps> = ({
   ) : (
     content
   );
+
+  // Render modal in document body via portal to avoid overflow clipping
+  return typeof document !== 'undefined'
+    ? createPortal(modalContent, document.body)
+    : null;
 };
 
 // ============ MODAL FORM WRAPPER ============
