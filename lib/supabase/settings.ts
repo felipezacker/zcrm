@@ -113,17 +113,8 @@ export const settingsService = {
         return this.createDefault();
       }
 
-      // Decrypt AI keys via RPC (keys are encrypted at-rest)
-      const { data: decryptedKeys } = await supabase
-        .rpc('get_user_ai_keys')
-        .maybeSingle() as { data: { ai_api_key: string | null; ai_google_key: string | null; ai_openai_key: string | null; ai_anthropic_key: string | null } | null };
-
-      if (decryptedKeys) {
-        data.ai_api_key = decryptedKeys.ai_api_key;
-        data.ai_google_key = decryptedKeys.ai_google_key;
-        data.ai_openai_key = decryptedKeys.ai_openai_key;
-        data.ai_anthropic_key = decryptedKeys.ai_anthropic_key;
-      }
+      // AI keys are already included in the data from the select above
+      // No need for RPC - the keys are directly queryable from user_settings table
 
       return { data: transformSettings(data as DbUserSettings), error: null };
     } catch (e) {

@@ -131,10 +131,12 @@ export async function POST(req: Request) {
     }
 
     // 3. Get AI settings (org-wide: organization_settings é a fonte de verdade)
-    // Use RPC for decrypted AI keys (keys are encrypted at-rest)
+    // Fetch directly from organization_settings table (keys may be encrypted at-rest)
     const { data: orgSettings } = await supabase
-        .rpc('get_org_ai_keys', { p_org_id: organizationId })
-        .maybeSingle() as { data: { ai_provider: string; ai_model: string; ai_google_key: string | null; ai_openai_key: string | null; ai_anthropic_key: string | null; ai_enabled: boolean } | null };
+        .from('organization_settings')
+        .select('ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key, ai_enabled')
+        .eq('organization_id', organizationId)
+        .maybeSingle() as { data: { ai_provider: string; ai_model: string; ai_google_key: string | null; ai_openai_key: string | null; ai_anthropic_key: string | null; ai_enabled: boolean } | null; error: any };
 
     const aiEnabled = typeof (orgSettings as any)?.ai_enabled === 'boolean' ? (orgSettings as any).ai_enabled : true;
     if (!aiEnabled) {

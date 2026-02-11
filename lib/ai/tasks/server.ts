@@ -85,9 +85,11 @@ export async function requireAITaskContext(req: Request): Promise<AITaskContext>
 
   const organizationId = profile.organization_id as string;
 
-  // Use RPC for decrypted AI keys (keys are encrypted at-rest)
+  // Fetch AI keys directly from organization_settings table (keys may be encrypted at-rest)
   const { data: orgSettings, error: orgError } = await supabase
-    .rpc('get_org_ai_keys', { p_org_id: organizationId })
+    .from('organization_settings')
+    .select('ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key, ai_enabled')
+    .eq('organization_id', organizationId)
     .maybeSingle() as { data: { ai_provider: string; ai_model: string; ai_google_key: string | null; ai_openai_key: string | null; ai_anthropic_key: string | null; ai_enabled: boolean } | null; error: any };
 
   const aiEnabled = typeof orgSettings?.ai_enabled === 'boolean' ? orgSettings.ai_enabled : true;
