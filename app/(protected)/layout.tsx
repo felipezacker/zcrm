@@ -4,8 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect } from 'react'
 
 import { QueryProvider } from '@/lib/query'
-import { ToastProvider } from '@/context/ToastContext'
-import { ThemeProvider } from '@/context/ThemeContext'
+import { UIProvider } from '@/context/UIContext'
 import { AuthProvider } from '@/context/AuthContext'
 import { CRMProvider } from '@/context/CRMContext'
 import { AIProvider } from '@/context/AIContext'
@@ -73,19 +72,17 @@ export default function ProtectedLayout({
 
   return (
     <QueryProvider>
-      <ToastProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <CRMProvider>
-              <AIProvider>
-                <FeatureErrorBoundary name="App">
-                  {shouldUseAppShell ? <Layout>{children}</Layout> : children}
-                </FeatureErrorBoundary>
-              </AIProvider>
-            </CRMProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </ToastProvider>
+      <UIProvider>
+        <AuthProvider>
+          <CRMProvider>
+            <AIProvider>
+              <FeatureErrorBoundary name="App">
+                {shouldUseAppShell ? <Layout>{children}</Layout> : children}
+              </FeatureErrorBoundary>
+            </AIProvider>
+          </CRMProvider>
+        </AuthProvider>
+      </UIProvider>
     </QueryProvider>
   )
 }
