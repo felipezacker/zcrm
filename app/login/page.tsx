@@ -43,14 +43,15 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-dark-bg relative overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-dark-bg relative overflow-hidden" style={{width: '100vw'}}>
             {/* Background Effects */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
                 <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] bg-primary-500/20 rounded-full blur-[120px]" />
                 <div className="absolute top-[40%] -left-[10%] w-[40%] h-[40%] bg-blue-500/20 rounded-full blur-[100px]" />
             </div>
 
-            <div className="max-w-md w-full relative z-10 px-4">
+            <div className="w-full flex items-center justify-center px-4 relative z-10">
+                <div style={{maxWidth: '28rem', width: '100%'}}>
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-bold text-slate-900 dark:text-white font-display tracking-tight mb-2">
                         Bem-vindo de volta
@@ -138,9 +139,10 @@ export default function LoginPage() {
                     </form>
                 </div>
 
-                <p className="mt-8 text-center text-xs text-slate-400 dark:text-slate-500">
-                    &copy; {new Date().getFullYear()} CRM IA. Todos os direitos reservados.
-                </p>
+                    <p className="mt-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                        &copy; {new Date().getFullYear()} CRM IA. Todos os direitos reservados.
+                    </p>
+                </div>
             </div>
         </div>
     )
