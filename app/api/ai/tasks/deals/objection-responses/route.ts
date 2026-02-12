@@ -1,4 +1,5 @@
 import { generateObject } from 'ai';
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 import { requireAITaskContext, AITaskHttpError } from '@/lib/ai/tasks/server';
 import { GenerateObjectionResponseInputSchema, ObjectionResponseOutputSchema } from '@/lib/ai/tasks/schemas';
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
       return json({ error: { code: 'INVALID_INPUT', message: 'Payload inválido.' } }, 400);
     }
 
-    console.error('[api/ai/tasks/deals/objection-responses] Error:', err);
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[api/ai/tasks/deals/objection-responses] Error');
     return json({ error: { code: 'INTERNAL_ERROR', message: 'Erro ao gerar respostas de objeção.' } }, 500);
   }
 }

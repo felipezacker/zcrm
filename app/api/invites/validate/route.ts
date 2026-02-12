@@ -1,4 +1,5 @@
 import { createStaticAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 function json<T>(body: T, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -32,10 +33,10 @@ export async function GET(req: Request) {
     .maybeSingle();
 
   if (error) {
-    console.error('[invites/validate] Database error:', error);
+    logger.error({ error: error.message }, '[invites/validate] Database error');
     return json({ valid: false, error: error.message }, 500);
   }
-  
+
   if (!invite) {
     // Try to find if token exists but is used/expired for better error message
     const { data: usedInvite } = await admin
@@ -43,7 +44,7 @@ export async function GET(req: Request) {
       .select('used_at, expires_at')
       .eq('token', normalizedToken)
       .maybeSingle();
-    
+
     if (usedInvite) {
       if (usedInvite.used_at) {
         return json({ valid: false, error: 'Este convite já foi utilizado' }, 400);
@@ -52,7 +53,7 @@ export async function GET(req: Request) {
         return json({ valid: false, error: 'Este convite expirou' }, 400);
       }
     }
-    
+
     return json({ valid: false, error: 'Convite não encontrado' }, 404);
   }
 

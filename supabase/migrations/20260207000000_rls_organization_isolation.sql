@@ -484,6 +484,8 @@ AS $$
 $$;
 
 -- Fix mark_deal_won to verify organization ownership
+-- DROP first because parameter name changes from deal_id to p_deal_id
+DROP FUNCTION IF EXISTS public.mark_deal_won(UUID);
 CREATE OR REPLACE FUNCTION public.mark_deal_won(p_deal_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -503,6 +505,8 @@ END;
 $$;
 
 -- Fix mark_deal_lost to verify organization ownership
+-- DROP first because parameter name changes from deal_id to p_deal_id
+DROP FUNCTION IF EXISTS public.mark_deal_lost(UUID, TEXT);
 CREATE OR REPLACE FUNCTION public.mark_deal_lost(p_deal_id UUID, reason TEXT DEFAULT NULL)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -523,6 +527,8 @@ END;
 $$;
 
 -- Fix reopen_deal to verify organization ownership
+-- DROP first because parameter name changes from deal_id to p_deal_id
+DROP FUNCTION IF EXISTS public.reopen_deal(UUID);
 CREATE OR REPLACE FUNCTION public.reopen_deal(p_deal_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 import { Client } from 'pg';
 import {
@@ -82,7 +83,7 @@ async function checkDatabaseHealth(dbUrl: string): Promise<{
 
     let hasAdmin = false;
     let hasOrganization = false;
-    
+
     if (schemaApplied) {
       const orgResult = await client.query<{ count: string }>(
         `SELECT COUNT(*)::text as count FROM public.organizations LIMIT 1`
@@ -97,10 +98,10 @@ async function checkDatabaseHealth(dbUrl: string): Promise<{
 
     return { storageReady, schemaApplied, hasAdmin, hasOrganization };
   } catch (error) {
-    console.error('[health-check] Database check failed:', error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, '[health-check] Database check failed');
     return { storageReady: false, schemaApplied: false, hasAdmin: false, hasOrganization: false };
   } finally {
-    await client.end().catch(() => {});
+    await client.end().catch(() => { });
   }
 }
 
@@ -111,14 +112,14 @@ export async function POST(req: Request) {
 
   const raw = await req.json().catch(() => null);
   const parsed = HealthCheckSchema.safeParse(raw);
-  
+
   if (!parsed.success) {
     return Response.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 });
   }
 
   const { supabase } = parsed.data;
   const projectRef = supabase.projectRef?.trim() || extractProjectRefFromSupabaseUrl(supabase.url) || '';
-  
+
   if (!projectRef) {
     return Response.json({ error: 'Could not determine project ref' }, { status: 400 });
   }
@@ -191,13 +192,13 @@ export async function POST(req: Request) {
     if (!result.skipMigrations) estimatedSeconds += 15;
     if (!result.skipBootstrap) estimatedSeconds += 5;
     estimatedSeconds += 20;
-    
+
     result.estimatedSeconds = estimatedSeconds;
     result.ok = true;
     result.details = { projectRef, dbUrlProvided: Boolean(supabase.dbUrl), dbUrlResolved: Boolean(dbUrl) };
 
   } catch (error) {
-    console.error('[health-check] Error:', error);
+    logger.error({ error: error instanceof Error ? error.message : String(error) }, '[health-check] Error');
     result.ok = false;
     result.details = { error: error instanceof Error ? error.message : 'Unknown error' };
   }

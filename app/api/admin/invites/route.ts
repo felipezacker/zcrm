@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 
@@ -84,7 +85,7 @@ export async function POST(req: Request) {
   const raw = await req.json().catch(() => null);
   const parsed = CreateInviteSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error('[admin/invites POST] Validation error:', parsed.error.flatten());
+    logger.warn({ details: parsed.error.flatten() }, '[admin/invites POST] Validation error');
     return json({ error: 'Invalid payload', details: parsed.error.flatten() }, 400);
   }
 
@@ -103,10 +104,10 @@ export async function POST(req: Request) {
     .single();
 
   if (error) {
-    console.error('[admin/invites POST] Database error:', error);
+    logger.error({ error: error.message }, '[admin/invites POST] Database error');
     return json({ error: error.message }, 500);
   }
 
-  console.log('[admin/invites POST] Created invite:', { id: invite?.id, token: invite?.token, expires_at: invite?.expires_at });
+  logger.info({ id: invite?.id, expires_at: invite?.expires_at }, '[admin/invites POST] Created invite');
   return json({ invite }, 201);
 }

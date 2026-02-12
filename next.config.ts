@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   // Otimiza imports de bibliotecas com barrel files (index.js que re-exporta tudo)
@@ -28,4 +29,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Suppress Sentry CLI output during build
+  silent: true,
+
+  // Upload source maps to Sentry for production debugging
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+});
+

@@ -13,6 +13,7 @@
 // -> 200 { result?: any, error?: string, consentType?: string, retryAfter?: number }
 
 import { generateObject, generateText } from 'ai';
+import { logger } from '@/lib/logger';
 import { getModel, type AIProvider } from '@/lib/ai/config';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
@@ -171,12 +172,34 @@ export async function POST(req: Request) {
     return json<AIActionResponse>({ error: 'Profile not found' }, 404);
   }
 
-  // Fetch AI keys directly from organization_settings table (keys may be encrypted at-rest)
-  const { data: orgSettings, error: orgError } = await supabase
-    .from('organization_settings')
-    .select('ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key, ai_enabled')
-    .eq('organization_id', profile.organization_id)
-    .maybeSingle() as { data: { ai_provider: string; ai_model: string; ai_google_key: string | null; ai_openai_key: string | null; ai_anthropic_key: string | null; ai_enabled: boolean } | null; error: any };
+  // Fetch AI keys: try RPC (decrypted) first, fallback to direct (legacy)
+  const secret = process.env.AI_KEY_ENCRYPTION_SECRET;
+  let orgSettings: any = null;
+  let orgError: any = null;
+
+  if (secret) {
+    const { data: decrypted, error: rpcError } = await supabase.rpc('get_decrypted_org_settings', {
+      p_org_id: profile.organization_id,
+      p_secret: secret
+    });
+    if (!rpcError && decrypted && decrypted.length > 0) {
+      orgSettings = decrypted[0];
+    } else {
+      // rpcError usually means DB function issue or network
+      if (rpcError) orgError = rpcError;
+    }
+  }
+
+  if (!orgSettings) {
+    const { data: legacySettings, error: legacyError } = await supabase
+      .from('organization_settings')
+      .select('ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key, ai_enabled')
+      .eq('organization_id', profile.organization_id)
+      .maybeSingle();
+
+    orgSettings = legacySettings;
+    if (legacyError) orgError = legacyError;
+  }
 
   const aiEnabled = typeof (orgSettings as any)?.ai_enabled === 'boolean' ? (orgSettings as any).ai_enabled : true;
   if (!aiEnabled) {
@@ -339,12 +362,12 @@ Responda em português do Brasil.`,
           Array.isArray(lifecycleStages) && lifecycleStages.length > 0
             ? lifecycleStages.map((s: any) => ({ id: s?.id || '', name: s?.name || String(s) }))
             : [
-                { id: 'LEAD', name: 'Lead' },
-                { id: 'MQL', name: 'MQL' },
-                { id: 'PROSPECT', name: 'Oportunidade' },
-                { id: 'CUSTOMER', name: 'Cliente' },
-                { id: 'OTHER', name: 'Outros' },
-              ];
+              { id: 'LEAD', name: 'Lead' },
+              { id: 'MQL', name: 'MQL' },
+              { id: 'PROSPECT', name: 'Oportunidade' },
+              { id: 'CUSTOMER', name: 'Cliente' },
+              { id: 'OTHER', name: 'Outros' },
+            ];
 
         const resolved = await getResolvedPrompt(supabase as any, profile.organization_id as any, 'task_boards_generate_structure');
         const prompt = renderPromptTemplate(resolved?.content || '', {
@@ -493,7 +516,7 @@ Responda em português.`,
       }
     }
   } catch (err: any) {
-    console.error('[api/ai/actions] Error:', err);
+    logger.error({ err: err?.message || err }, '[api/ai/actions] Error');
     return json<AIActionResponse>({ error: err?.message || 'Internal Server Error' }, 200);
   }
 }

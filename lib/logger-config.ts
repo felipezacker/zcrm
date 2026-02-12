@@ -1,22 +1,7 @@
 import pino from 'pino';
-import path from 'path';
-import fs from 'fs';
 
 const isDev = process.env.NODE_ENV === 'development';
 const isProd = process.env.NODE_ENV === 'production';
-
-/**
- * Create logs directory if it doesn't exist
- */
-function ensureLogsDir(): string {
-  const logsDir = path.join(process.cwd(), 'logs');
-
-  if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir, { recursive: true });
-  }
-
-  return logsDir;
-}
 
 /**
  * Configure log transport based on environment
@@ -35,18 +20,37 @@ export function getLogTransport() {
     };
   }
 
-  // Production: Use pino-roll for log rotation
-  const logsDir = ensureLogsDir();
+  // Production: Use pino-roll for log rotation (Server only)
+  if (typeof window === 'undefined') {
+    const path = require('path');
+    const fs = require('fs');
 
+    const ensureLogsDir = () => {
+      const logsDir = path.join(process.cwd(), 'logs');
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir, { recursive: true });
+      }
+      return logsDir;
+    };
+
+    const logsDir = ensureLogsDir();
+
+    return {
+      target: 'pino-roll',
+      options: {
+        dir: logsDir,
+        file: 'app.log',
+        frequency: 'daily', // Rotate daily
+        size: '100m', // Also rotate at 100MB
+        mkdir: true,
+      },
+    };
+  }
+
+  // Create a silent or console fallback for production client-side
   return {
-    target: 'pino-roll',
-    options: {
-      dir: logsDir,
-      file: 'app.log',
-      frequency: 'daily', // Rotate daily
-      size: '100m', // Also rotate at 100MB
-      mkdir: true,
-    },
+    target: 'pino/file', // fallback
+    options: { destination: 1 } // stdout
   };
 }
 
@@ -87,9 +91,11 @@ export const LOG_CLEANUP_INTERVAL_HOURS = 24; // Check for cleanup daily
  * Clean up old log files based on retention policy
  */
 export async function cleanupOldLogs(): Promise<void> {
-  if (!isProd) return; // Only cleanup in production
+  if (!isProd || typeof window !== 'undefined') return; // Only cleanup in production server
 
   try {
+    const fs = require('fs');
+    const path = require('path');
     const logsDir = path.join(process.cwd(), 'logs');
 
     if (!fs.existsSync(logsDir)) {

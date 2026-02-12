@@ -1,4 +1,5 @@
 import { generateText } from 'ai';
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 import { requireAITaskContext, AITaskHttpError } from '@/lib/ai/tasks/server';
 import { GenerateDailyBriefingInputSchema } from '@/lib/ai/tasks/schemas';
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
       return json({ error: { code: 'INVALID_INPUT', message: 'Payload inválido.' } }, 400);
     }
 
-    console.error('[api/ai/tasks/inbox/daily-briefing] Error:', err);
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[api/ai/tasks/inbox/daily-briefing] Error');
     return json({ error: { code: 'INTERNAL_ERROR', message: 'Erro ao gerar briefing.' } }, 500);
   }
 }

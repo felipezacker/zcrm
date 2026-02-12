@@ -8,6 +8,7 @@ import { AI_DEFAULT_MODELS } from '@/lib/ai/defaults';
 import type { CRMCallOptions } from '@/types/ai';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 import { isAIFeatureEnabled } from '@/lib/ai/features/server';
+import { logger } from '@/lib/logger';
 
 export const maxDuration = 60;
 
@@ -46,9 +47,7 @@ function asOptionalCockpitSnapshot(v: unknown): unknown | undefined {
         const text = JSON.stringify(v);
         // ~80KB costuma ser um bom compromisso (contexto rico sem virar “dump”).
         if (text.length > 80_000) {
-            console.warn('[AI Chat] cockpitSnapshot too large; ignoring.', {
-                bytes: text.length,
-            });
+            logger.warn({ bytes: text.length }, '[AI Chat] cockpitSnapshot too large; ignoring.');
             return undefined;
         }
     } catch {
@@ -104,7 +103,7 @@ export async function POST(req: Request) {
                 .maybeSingle();
 
             if (boardError) {
-                console.warn('[AI Chat] Failed to infer organization from board:', { boardId, message: boardError.message });
+                logger.warn({ boardId, message: boardError.message }, '[AI Chat] Failed to infer organization from board');
             }
 
             if (board?.organization_id) {
@@ -117,7 +116,7 @@ export async function POST(req: Request) {
                     .eq('id', user.id);
 
                 if (updateProfileError) {
-                    console.warn('[AI Chat] Failed to backfill profile.organization_id:', { message: updateProfileError.message });
+                    logger.warn({ message: updateProfileError.message }, '[AI Chat] Failed to backfill profile.organization_id');
                 }
             }
         }
@@ -130,13 +129,32 @@ export async function POST(req: Request) {
         );
     }
 
-    // 3. Get AI settings (org-wide: organization_settings é a fonte de verdade)
-    // Fetch directly from organization_settings table (keys may be encrypted at-rest)
-    const { data: orgSettings } = await supabase
-        .from('organization_settings')
-        .select('ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key, ai_enabled')
-        .eq('organization_id', organizationId)
-        .maybeSingle() as { data: { ai_provider: string; ai_model: string; ai_google_key: string | null; ai_openai_key: string | null; ai_anthropic_key: string | null; ai_enabled: boolean } | null; error: any };
+    // 3. Get AI settings (org-wide)
+    // Try to fetch via RPC (decrypted) if secret is available, otherwise fallback to direct select (migration)
+    const secret = process.env.AI_KEY_ENCRYPTION_SECRET;
+    let orgSettings: any = null;
+
+    if (secret) {
+        const { data: decrypted, error: rpcError } = await supabase.rpc('get_decrypted_org_settings', {
+            p_org_id: organizationId,
+            p_secret: secret
+        });
+        if (!rpcError && decrypted && decrypted.length > 0) {
+            orgSettings = decrypted[0];
+        } else {
+            logger.warn({ error: rpcError }, '[AI Chat] RPC failed or returned empty, falling back to direct select');
+        }
+    }
+
+    if (!orgSettings) {
+        // Fallback: fetch directly (legacy/migration support)
+        const { data: legacySettings } = await supabase
+            .from('organization_settings')
+            .select('ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key, ai_enabled')
+            .eq('organization_id', organizationId)
+            .maybeSingle();
+        orgSettings = legacySettings;
+    }
 
     const aiEnabled = typeof (orgSettings as any)?.ai_enabled === 'boolean' ? (orgSettings as any).ai_enabled : true;
     if (!aiEnabled) {
@@ -201,7 +219,7 @@ export async function POST(req: Request) {
         cockpitSnapshot: (rawContext as any)?.cockpitSnapshot ? '[provided]' : undefined,
     };
 
-    console.log('[AI Chat] 📨 Request received:', {
+    logger.info({
         messagesCount: messages?.length,
         rawContext: rawContextSummary,
         context: {
@@ -217,7 +235,7 @@ export async function POST(req: Request) {
             provider,
             modelId: resolvedModelId,
         },
-    });
+    }, '[AI Chat] Request received');
 
     // 6. Create agent with API key and context
     let agent: Awaited<ReturnType<typeof createCRMAgent>>;
@@ -226,7 +244,7 @@ export async function POST(req: Request) {
     } catch (err: any) {
         const message = String(err?.message || err || 'Erro desconhecido');
         // Ex.: quando o provider é Gemini mas o modelId é OpenAI (ou vice-versa), o SDK retorna mensagens parecidas.
-        console.warn('[AI Chat] Failed to create agent/model:', { provider, modelId: resolvedModelId, message });
+        logger.warn({ provider, modelId: resolvedModelId, message }, '[AI Chat] Failed to create agent/model');
         return new Response(
             `Falha ao inicializar o modelo de IA (${provider} / ${resolvedModelId}). Verifique o provedor, o modelo selecionado e a chave de API.\n\nDetalhes: ${message}`,
             { status: 400 }

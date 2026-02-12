@@ -63,3 +63,37 @@
   - Nenhuma cor HEX hardcoded em componentes UI.
   - Auditoria visual em todas as telas principais no modo Dark.
 - **Estimativa**: 5pts (16h)
+
+---
+
+## Sprint 3: Segurança & Observabilidade (Phase A-B)
+
+### [SEC-001] Criptografia de API Keys & Rotação
+**Como** Arquiteto de Segurança
+**Quero** que as chaves de API sejam criptografadas e rotacionadas
+**Para** mitigar o risco de vazamento em caso de breach.
+- **Critérios de Aceite**:
+  - Chaves (OpenAI, Anthropic, Google) criptografadas via `pgcrypto`.
+  - Rate limiting Implementado na validação de chaves.
+  - Job agendado (pg_cron) para rotação mensal.
+- **Estimativa**: 5pts (16h)
+
+### [OPS-001] Implementar Logging Estruturado
+**Como** Desenvolvedor Backend
+**Quero** logs estruturados (JSON) com correlation IDs
+**Para** conseguir rastrear requisições e diagnosticar erros em produção com eficiência.
+- **Critérios de Aceite**:
+  - Middleware de logging (pino/winston) implementado.
+  - Logs sensíveis (senhas/tokens) anonimizados.
+  - Correlation ID propagado entre serviços.
+- **Estimativa**: 3pts (8h)
+
+### [OPS-002] Setup de Sentry & APM
+**Como** DevOps Engineer
+**Quero** rastreamento de erros e monitoramento de performance
+**Para** ser alertado proativamente sobre falhas e lentidão.
+- **Critérios de Aceite**:
+  - SDK do Sentry configurado (Front + Back).
+  - Source maps gerados no build para debug.
+  - Alertas configurados para erros críticos (> 5%).
+- **Estimativa**: 3pts (8h)

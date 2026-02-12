@@ -28,25 +28,25 @@ export class AITaskHttpError extends Error {
   status: number;
   code: string;
 
-    /**
-   * Constrói uma instância de `AITaskHttpError`.
-   *
-   * @param {number} status - Parâmetro `status`.
-   * @param {string} code - Parâmetro `code`.
-   * @param {string} message - Parâmetro `message`.
-   * @returns {void} Não retorna valor.
-   */
-constructor(status: number, code: string, message: string) {
+  /**
+ * Constrói uma instância de `AITaskHttpError`.
+ *
+ * @param {number} status - Parâmetro `status`.
+ * @param {string} code - Parâmetro `code`.
+ * @param {string} message - Parâmetro `message`.
+ * @returns {void} Não retorna valor.
+ */
+  constructor(status: number, code: string, message: string) {
     super(message);
     this.status = status;
     this.code = code;
   }
 
-    /**
-   * Método público `toResponse`.
-   * @returns {Response} Retorna um valor do tipo `Response`.
-   */
-toResponse() {
+  /**
+ * Método público `toResponse`.
+ * @returns {Response} Retorna um valor do tipo `Response`.
+ */
+  toResponse() {
     return json({ error: { code: this.code, message: this.message } }, this.status);
   }
 }
@@ -85,12 +85,32 @@ export async function requireAITaskContext(req: Request): Promise<AITaskContext>
 
   const organizationId = profile.organization_id as string;
 
-  // Fetch AI keys directly from organization_settings table (keys may be encrypted at-rest)
-  const { data: orgSettings, error: orgError } = await supabase
-    .from('organization_settings')
-    .select('ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key, ai_enabled')
-    .eq('organization_id', organizationId)
-    .maybeSingle() as { data: { ai_provider: string; ai_model: string; ai_google_key: string | null; ai_openai_key: string | null; ai_anthropic_key: string | null; ai_enabled: boolean } | null; error: any };
+  // Fetch AI keys: try RPC (decrypted) first
+  const secret = process.env.AI_KEY_ENCRYPTION_SECRET;
+  let orgSettings: any = null;
+  let orgError: any = null;
+
+  if (secret) {
+    const { data: decrypted, error: rpcError } = await supabase.rpc('get_decrypted_org_settings', {
+      p_org_id: organizationId,
+      p_secret: secret
+    });
+    if (!rpcError && decrypted && decrypted.length > 0) {
+      orgSettings = decrypted[0];
+    } else {
+      if (rpcError) orgError = rpcError;
+    }
+  }
+
+  if (!orgSettings) {
+    const { data: legacySettings, error: legacyError } = await supabase
+      .from('organization_settings')
+      .select('ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key, ai_enabled')
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    orgSettings = legacySettings;
+    if (legacyError) orgError = legacyError;
+  }
 
   const aiEnabled = typeof orgSettings?.ai_enabled === 'boolean' ? orgSettings.ai_enabled : true;
   if (!aiEnabled) {

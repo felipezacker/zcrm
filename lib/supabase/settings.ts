@@ -2,6 +2,7 @@ import { supabase } from './client';
 import { LifecycleStage } from '@/types';
 import { sanitizeUUID } from './utils';
 import { AI_DEFAULT_MODELS, AI_DEFAULT_PROVIDER } from '@/lib/ai/defaults';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // SETTINGS SERVICE
@@ -98,6 +99,18 @@ export const settingsService = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { data: null, error: new Error('Not authenticated') };
 
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile) {
+        // Profile missing is critical for org settings
+        return { data: null, error: profileError || new Error('Profile not found') };
+      }
+
+
       const { data, error } = await supabase
         .from('user_settings')
         .select('*')
@@ -113,8 +126,30 @@ export const settingsService = {
         return this.createDefault();
       }
 
-      // AI keys are already included in the data from the select above
-      // No need for RPC - the keys are directly queryable from user_settings table
+      // AI keys are now encrypted. Use RPC to get them if AI_KEY_ENCRYPTION_SECRET is set.
+      const secret = process.env.AI_KEY_ENCRYPTION_SECRET;
+
+      if (secret) {
+        // Fetch decrypted settings via RPC
+        const { data: decryptedData, error: rpcError } = await supabase.rpc('get_decrypted_org_settings', {
+          p_org_id: profile.organization_id,
+          p_secret: secret
+        });
+
+        if (rpcError) {
+          logger.error({ rpcError }, 'Failed to fetch decrypted settings via RPC');
+          // Fallback to what we have (plaintext might still be there during migration)
+        } else if (decryptedData && decryptedData.length > 0) {
+          // Merge decrypted keys into the settings object
+          const d = decryptedData[0];
+          (data as any).ai_google_key = d.ai_google_key;
+          (data as any).ai_openai_key = d.ai_openai_key;
+          (data as any).ai_anthropic_key = d.ai_anthropic_key;
+          (data as any).ai_provider = d.ai_provider;
+          (data as any).ai_model = d.ai_model;
+          (data as any).ai_enabled = d.ai_enabled;
+        }
+      }
 
       return { data: transformSettings(data as DbUserSettings), error: null };
     } catch (e) {
@@ -135,7 +170,7 @@ export const settingsService = {
         .single();
 
       if (profileError || !profile) {
-        console.warn('Profile not found, skipping user_settings creation');
+        logger.warn('Profile not found, skipping user_settings creation');
         return { data: null, error: null }; // No error, just skip
       }
 
@@ -159,7 +194,7 @@ export const settingsService = {
         });
 
       if (upsertError) {
-        console.warn('Upsert warning (likely race condition):', upsertError.message);
+        logger.warn({ message: upsertError.message }, 'Upsert warning (likely race condition)');
       }
 
       // Always fetch the current settings (either just created or already existed)
@@ -195,9 +230,28 @@ export const settingsService = {
       if (updates.onboardingCompleted !== undefined) dbUpdates.onboarding_completed = updates.onboardingCompleted;
 
       // Handle API keys per provider
-      if (updates.aiGoogleKey !== undefined) dbUpdates.ai_google_key = updates.aiGoogleKey || null;
-      if (updates.aiOpenaiKey !== undefined) dbUpdates.ai_openai_key = updates.aiOpenaiKey || null;
-      if (updates.aiAnthropicKey !== undefined) dbUpdates.ai_anthropic_key = updates.aiAnthropicKey || null;
+      // For AI keys, we use the RPC to update organization_settings (encrypted) if secret is present.
+      // NOTE: user_settings currently mirrors some AI prefs, but keys are in organization_settings.
+      // This update method in user_settings seems to be mixing user prefs with org keys?
+      // Assuming for now we only update non-key prefs here, OR we need to redirect key updates to the RPC.
+
+      // If we are updating keys, we should probably warn or handle it differently since keys belong to ORG, not USER.
+      // But adhering to the existing signature:
+
+      const secret = process.env.AI_KEY_ENCRYPTION_SECRET;
+      if (secret && (updates.aiGoogleKey !== undefined || updates.aiOpenaiKey !== undefined || updates.aiAnthropicKey !== undefined)) {
+        // Get org id to call RPC
+        const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
+        if (profile?.organization_id) {
+          await supabase.rpc('update_encrypted_org_settings', {
+            p_org_id: profile.organization_id,
+            p_secret: secret,
+            p_google_key: updates.aiGoogleKey,
+            p_openai_key: updates.aiOpenaiKey,
+            p_anthropic_key: updates.aiAnthropicKey
+          });
+        }
+      }
 
       // Legacy: also update ai_api_key for backward compatibility
       if (updates.aiApiKey !== undefined) {
@@ -214,7 +268,7 @@ export const settingsService = {
 
       // Self-healing: If row doesn't exist (data is empty), create it and retry update
       if (!error && (!data || data.length === 0)) {
-        console.warn('User settings row missing during update. Creating default...');
+        logger.warn('User settings row missing during update. Creating default...');
         await this.createDefault();
 
         // Retry update

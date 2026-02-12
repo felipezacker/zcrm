@@ -1,4 +1,5 @@
 import { generateObject } from 'ai';
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 import { requireAITaskContext, AITaskHttpError } from '@/lib/ai/tasks/server';
 import { GenerateBoardStructureInputSchema, BoardStructureOutputSchema } from '@/lib/ai/tasks/schemas';
@@ -36,12 +37,12 @@ export async function POST(req: Request) {
       Array.isArray(lifecycleStages) && lifecycleStages.length > 0
         ? lifecycleStages.map(s => ({ id: s.id || '', name: s.name || String(s) }))
         : [
-            { id: 'LEAD', name: 'Lead' },
-            { id: 'MQL', name: 'MQL' },
-            { id: 'PROSPECT', name: 'Oportunidade' },
-            { id: 'CUSTOMER', name: 'Cliente' },
-            { id: 'OTHER', name: 'Outros' },
-          ];
+          { id: 'LEAD', name: 'Lead' },
+          { id: 'MQL', name: 'MQL' },
+          { id: 'PROSPECT', name: 'Oportunidade' },
+          { id: 'CUSTOMER', name: 'Cliente' },
+          { id: 'OTHER', name: 'Outros' },
+        ];
 
     const resolved = await getResolvedPrompt(supabase, organizationId, 'task_boards_generate_structure');
     const prompt = renderPromptTemplate(resolved?.content || '', {
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
       return json({ error: { code: 'INVALID_INPUT', message: 'Payload inválido.' } }, 400);
     }
 
-    console.error('[api/ai/tasks/boards/generate-structure] Error:', err);
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[api/ai/tasks/boards/generate-structure] Error');
     return json({ error: { code: 'INTERNAL_ERROR', message: 'Erro ao gerar estrutura do board.' } }, 500);
   }
 }
