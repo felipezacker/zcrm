@@ -1,0 +1,38 @@
+name: DB Migration CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+
+jobs:
+  validate-migrations:
+    name: Validate DB Migrations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Verify Migrations
+        run: |
+          supabase db reset --no-seed
+          # If we get here, it means migrations applied successfully
+          echo "✅ Migrations valid!"
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop

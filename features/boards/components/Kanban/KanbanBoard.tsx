@@ -1,8 +1,9 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { DealView, BoardStage } from '@/types';
 import { DealCard } from './DealCard';
 import { isDealRotting, getActivityStatus } from '@/features/boards/hooks/useBoardsController';
 import { MoveToStageModal } from '../Modals/MoveToStageModal';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 import { useCRM } from '@/context/CRMContext';
 
@@ -115,7 +116,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 }) => {
   const { lifecycleStages } = useCRM();
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
-  
+  const isMobile = useMediaQuery('(max-width: 640px)');
+  const [activeStageId, setActiveStageId] = useState<string | null>(null);
+
+  // Set initial active stage for mobile
+  useEffect(() => {
+    if (stages.length > 0 && !activeStageId) {
+      setActiveStageId(stages[0].id);
+    }
+  }, [stages, activeStageId]);
+
   // State for move-to-stage modal (keyboard accessibility alternative to drag-and-drop)
   const [moveToStageModal, setMoveToStageModal] = useState<{
     isOpen: boolean;
@@ -184,126 +194,171 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     setMoveToStageModal(null);
   };
 
+  const visibleStages = isMobile
+    ? stages.filter(s => s.id === activeStageId) // Show only active stage on mobile
+    : stages; // Show all stages on desktop
+
   return (
-    <div className="flex gap-4 h-full overflow-x-auto pb-2 w-full">
-      {stages.map(stage => {
-        const stageDeals = dealsByStageId.map.get(stage.id) ?? [];
-        const stageValue = dealsByStageId.totals.get(stage.id) ?? 0;
-        const isOver = dragOverStage === stage.id && draggingId !== null;
-
-        // Resolve linked stage name
-        const linkedStageName =
-          stage.linkedLifecycleStage
-            ? lifecycleStageNameById.get(stage.linkedLifecycleStage) ?? null
-            : null;
-
-        return (
-          <div
-            key={stage.id}
-            onDragOver={(e) => {
-              handleDragOver(e);
-              setDragOverStage(stage.id);
-            }}
-            onDrop={(e) => {
-              handleDrop(e, stage.id);
-              setDragOverStage(null);
-            }}
-            onDragEnter={() => setDragOverStage(stage.id)}
-            onDragLeave={() => setDragOverStage(null)}
-            className={`min-w-[20rem] flex-1 flex flex-col rounded-xl border-2 overflow-visible h-full max-h-full transition-all duration-200
-                            ${isOver
-                ? `${dropHighlightClasses(stage.color)} scale-[1.02]`
-                : 'border-slate-200/50 dark:border-white/10 glass'
-              }
-                        `}
-          >
-            <div className={`h-1.5 w-full ${stage.color}`}></div>
-
-            <div
-              className={`p-3 border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 shrink-0`}
-            >
-              <div className="flex justify-between items-center mb-1">
-                <span className="font-bold text-slate-700 dark:text-slate-200 font-display text-sm tracking-wide uppercase">
-                  {stage.label}
-                </span>
-                <span className="text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300">
-                  {stageDeals.length}
-                </span>
-              </div>
-
-              {/* Automation Indicator - Always rendered for consistent height */}
-              <div className="mb-2 flex items-center gap-1.5 min-h-[22px]">
-                {linkedStageName ? (
-                  <span className="text-[10px] uppercase font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-1.5 py-0.5 rounded border border-primary-100 dark:border-primary-800/50 flex items-center gap-1">
-                    <span className="w-1 h-1 rounded-full bg-primary-500 animate-pulse"></span>
-                    Promove para: {linkedStageName}
-                  </span>
-                ) : (
-                  <span className="text-[10px] px-1.5 py-0.5 opacity-0 select-none">
-                    Placeholder
-                  </span>
-                )}
-              </div>
-
-              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium text-right">
-                Total:{' '}
-                <span className="text-slate-900 dark:text-white font-mono">
-                  ${stageValue.toLocaleString()}
-                </span>
-              </div>
-            </div>
-
-            <div
-              className={`flex-1 p-2 overflow-y-auto space-y-2 bg-slate-100/50 dark:bg-black/20 scrollbar-thin min-h-[100px]`}
-            >
-              {stageDeals.length === 0 && !draggingId && (
-                <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-600 text-sm py-8">
-                  Sem negócios
-                </div>
-              )}
-              {isOver && stageDeals.length === 0 && (
-                <div className="h-full flex items-center justify-center text-green-500 dark:text-green-400 text-sm py-8 font-bold animate-pulse pointer-events-none">
-                  ✓ Solte aqui!
-                </div>
-              )}
-              {stageDeals.map(deal => (
-                <DealCard
-                  key={deal.id}
-                  deal={deal}
-                  isRotting={
-                    isDealRotting(deal) &&
-                    !deal.isWon &&
-                    !deal.isLost
+    <div className="flex flex-col h-full w-full overflow-hidden">
+      {/* Mobile Tab Navigation */}
+      {isMobile && (
+        <div className="flex overflow-x-auto pb-2 mb-2 gap-2 scrollbar-hide px-1">
+          {stages.map(stage => {
+            const isActive = stage.id === activeStageId;
+            const count = dealsByStageId.map.get(stage.id)?.length ?? 0;
+            return (
+              <button
+                key={stage.id}
+                onClick={() => setActiveStageId(stage.id)}
+                className={`
+                  flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all
+                  ${isActive
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md transform scale-105'
+                    : 'bg-white text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                   }
-                  activityStatus={getActivityStatus(deal)}
-                  isDragging={draggingId === deal.id}
-                  onDragStart={handleDragStart}
-                  onSelect={handleSelectDeal}
-                  // Performance: avoid passing openMenuId (string) to all cards.
-                  // Only 1–2 cards will flip `isMenuOpen` when the menu is toggled.
-                  isMenuOpen={openActivityMenuId === deal.id}
-                  setOpenMenuId={setOpenActivityMenuId}
-                  onQuickAddActivity={handleQuickAddActivity}
-                  setLastMouseDownDealId={setLastMouseDownDealId}
-                  onMoveToStage={onMoveDealToStage ? handleOpenMoveToStage : undefined}
-                />
-              ))}
-            </div>
-          </div>
-        );
-      })}
-      
-      {/* Keyboard-accessible modal for moving deals between stages */}
-      {moveToStageModal && (
-        <MoveToStageModal
-          isOpen={moveToStageModal.isOpen}
-          onClose={() => setMoveToStageModal(null)}
-          onMove={handleConfirmMoveToStage}
-          deal={moveToStageModal.deal}
-          stages={stages}
-          currentStageId={moveToStageModal.currentStageId}
-        />
+                `}
+              >
+                <div className={`w-2 h-2 rounded-full ${stage.color}`} />
+                {stage.label}
+                <span className={`
+                  text-xs px-1.5 rounded 
+                  ${isActive ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-700'}
+                `}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       )}
+
+      {/* Board Columns */}
+      <div className={`flex gap-4 h-full overflow-x-auto pb-2 w-full ${isMobile ? 'snap-x snap-mandatory' : ''}`}>
+        {visibleStages.map(stage => {
+          const stageDeals = dealsByStageId.map.get(stage.id) ?? [];
+          const stageValue = dealsByStageId.totals.get(stage.id) ?? 0;
+          const isOver = dragOverStage === stage.id && draggingId !== null;
+
+          // Resolve linked stage name
+          const linkedStageName =
+            stage.linkedLifecycleStage
+              ? lifecycleStageNameById.get(stage.linkedLifecycleStage) ?? null
+              : null;
+
+          return (
+            <div
+              key={stage.id}
+              onDragOver={(e) => {
+                if (!isMobile) {
+                  handleDragOver(e);
+                  setDragOverStage(stage.id);
+                }
+              }}
+              onDrop={(e) => {
+                if (!isMobile) {
+                  handleDrop(e, stage.id);
+                  setDragOverStage(null);
+                }
+              }}
+              onDragEnter={() => !isMobile && setDragOverStage(stage.id)}
+              onDragLeave={() => !isMobile && setDragOverStage(null)}
+              className={`
+                flex-1 flex flex-col rounded-xl border-2 overflow-visible h-full max-h-full transition-all duration-200
+                ${isMobile ? 'min-w-[100%] snap-center' : 'min-w-[20rem]'}
+                ${isOver
+                  ? `${dropHighlightClasses(stage.color)} scale-[1.02]`
+                  : 'border-slate-200/50 dark:border-white/10 glass'
+                }
+              `}
+            >
+              <div className={`h-1.5 w-full ${stage.color}`}></div>
+
+              <div
+                className={`p-3 border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 shrink-0`}
+              >
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-bold text-slate-700 dark:text-slate-200 font-display text-sm tracking-wide uppercase">
+                    {stage.label}
+                  </span>
+                  <span className="text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                    {stageDeals.length}
+                  </span>
+                </div>
+
+                {/* Automation Indicator - Always rendered for consistent height */}
+                <div className="mb-2 flex items-center gap-1.5 min-h-[22px]">
+                  {linkedStageName ? (
+                    <span className="text-[10px] uppercase font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-1.5 py-0.5 rounded border border-primary-100 dark:border-primary-800/50 flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-primary-500 animate-pulse"></span>
+                      Promove para: {linkedStageName}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-1.5 py-0.5 opacity-0 select-none">
+                      Placeholder
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium text-right">
+                  Total:{' '}
+                  <span className="text-slate-900 dark:text-white font-mono">
+                    ${stageValue.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className={`flex-1 p-2 overflow-y-auto space-y-2 bg-slate-100/50 dark:bg-black/20 scrollbar-thin min-h-[100px]`}
+              >
+                {stageDeals.length === 0 && !draggingId && (
+                  <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-600 text-sm py-8">
+                    Sem negócios
+                  </div>
+                )}
+                {isOver && stageDeals.length === 0 && (
+                  <div className="h-full flex items-center justify-center text-green-500 dark:text-green-400 text-sm py-8 font-bold animate-pulse pointer-events-none">
+                    ✓ Solte aqui!
+                  </div>
+                )}
+                {stageDeals.map(deal => (
+                  <DealCard
+                    key={deal.id}
+                    deal={deal}
+                    isRotting={
+                      isDealRotting(deal) &&
+                      !deal.isWon &&
+                      !deal.isLost
+                    }
+                    activityStatus={getActivityStatus(deal)}
+                    isDragging={draggingId === deal.id}
+                    onDragStart={isMobile ? () => { } : handleDragStart} // Disable drag on mobile
+                    onSelect={handleSelectDeal}
+                    // Performance: avoid passing openMenuId (string) to all cards.
+                    // Only 1–2 cards will flip `isMenuOpen` when the menu is toggled.
+                    isMenuOpen={openActivityMenuId === deal.id}
+                    setOpenMenuId={setOpenActivityMenuId}
+                    onQuickAddActivity={handleQuickAddActivity}
+                    setLastMouseDownDealId={setLastMouseDownDealId}
+                    onMoveToStage={onMoveDealToStage ? handleOpenMoveToStage : undefined}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Keyboard-accessible modal for moving deals between stages */}
+        {moveToStageModal && (
+          <MoveToStageModal
+            isOpen={moveToStageModal.isOpen}
+            onClose={() => setMoveToStageModal(null)}
+            onMove={handleConfirmMoveToStage}
+            deal={moveToStageModal.deal}
+            stages={stages}
+            currentStageId={moveToStageModal.currentStageId}
+          />
+        )}
+      </div>
     </div>
   );
 };

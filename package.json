@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint --max-warnings 0",
     "typecheck": "tsc --noEmit",
+    "update-types": "npx --yes supabase gen types typescript --project-id \"$SUPABASE_PROJECT_ID\" --schema public > types/database.types.ts",
     "test": "node test/load-env.cjs && vitest",
     "test:run": "node test/load-env.cjs && vitest run",
     "smoke:integrations": "node scripts/smoke-integrations.mjs",

@@ -38,6 +38,40 @@ const config = {
             // Keep existing dark colors for backwards compatibility
             colors: {
                 ...tokens.colors,
+                // Semantic Colors (OKLCH from globals.css)
+                bg: 'var(--color-bg)',
+                surface: 'var(--color-surface)',
+                muted: 'var(--color-muted)',
+                border: 'var(--color-border)',
+                'border-subtle': 'var(--color-border-subtle)',
+
+                // Text Colors
+                primary: 'var(--color-text-primary)',
+                secondary: 'var(--color-text-secondary)',
+                'text-muted': 'var(--color-text-muted)',
+                'text-subtle': 'var(--color-text-subtle)',
+
+                // Status Colors
+                success: 'var(--color-success)',
+                'success-bg': 'var(--color-success-bg)',
+                'success-text': 'var(--color-success-text)',
+
+                warning: 'var(--color-warning)',
+                'warning-bg': 'var(--color-warning-bg)',
+                'warning-text': 'var(--color-warning-text)',
+
+                error: 'var(--color-error)',
+                'error-bg': 'var(--color-error-bg)',
+                'error-text': 'var(--color-error-text)',
+
+                info: 'var(--color-info)',
+                'info-bg': 'var(--color-info-bg)',
+                'info-text': 'var(--color-info-text)',
+
+                orange: 'var(--color-orange)',
+                'orange-bg': 'var(--color-orange-bg)',
+                'orange-text': 'var(--color-orange-text)',
+
                 dark: {
                     bg: '#020617',
                     card: '#0f172a',
