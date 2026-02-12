@@ -1,63 +1,34 @@
 # Database Specialist Review
 
-**Documento:** FASE 5 - Brownfield Discovery  
-**Revisor:** @data-engineer (Dara)  
-**Data:** 2026-02-09
+**Date**: 2026-02-11
+**Reviewer**: Data Engineer Agent (Orion)
+**Status**: Completed
 
----
+## 1. Débitos Validados
 
-## Gate Status: ✅ VALIDATED
+| ID | Débito | Severidade | Horas Est. | Prioridade | Notas |
+|----|--------|------------|------------|------------|-------|
+| DB-01 | **Ausência de ORM** | Média | 40h | Média | O acesso direto via `supabase-js` é flexível, mas a manutenção de types manuais (`database.types.ts`) é propensa a erros. Recomendado: automatizar geração de types com `supabase gen types`. |
+| DB-02 | **Single vs Multi-tenant Híbrido** | Alta | 16h | Alta | A existência de `get_singleton_organization_id` é um code smell. Devemos migrar 100% para lógica multi-tenant (RLS já suporta). |
+| DB-03 | **Índices de Soft Delete** | Média | 4h | Alta | Crítico para performance futura. Adicionar índices parciais `WHERE deleted_at IS NULL` em `deals`, `contacts`, `activities`. |
+| DB-04 | **JSONB Performance** | Baixa | 8h | Baixa | Monitorar. Por enquanto volume de dados não justifica índices GIN complexos, mas devemos preparar queries para extrair campos se necessário. |
+| DB-05 | **Migrações Raw SQL** | Alta | 24h | Alta | Risco de drift. Implementar pipeline de CI que roda migrações em banco efêmero de teste (Supabase CLI ou Docker). |
 
----
+## 2. Débitos Adicionados
 
-## Débitos Validados
+- **DB-06: Falta de Particionamento em `audit_logs`**: Tabela de logs crescerá indefinidamente. Recomendado: particionamento por mês (Range Partitioning). (Esforço: 8h, Prioridade: Baixa por enquanto).
+- **DB-07: Backup Strategy**: Não identificado script de restore de teste automatizado. (Esforço: 4h, Prioridade: Média).
 
-| ID | Débito | Severidade | Horas | Prioridade | Notas |
-|----|--------|------------|-------|------------|-------|
-| DB-001 | RLS policies `USING(true)` | 🔴 Crítico | 6h | P1 | Intencional para single-tenant, mas risco se escalar |
-| DB-002 | Falta índices de busca | 🔴 Crítico | 3h | P1 | Impacto já sentido em queries de deals |
-| DB-003 | Soft delete sem cleanup | 🟠 Alto | 6h | P2 | Requer job cron no Supabase |
-| DB-004 | FKs sem índice | 🟠 Alto | 3h | P2 | Crítico para JOINs em produção |
-| DB-005 | Schema consolidado 80KB | 🟠 Alto | 12h | P3 | Quebrar em migrations separadas |
-| DB-006 | JSONB sem validação | 🟡 Médio | 6h | P3 | Implementar com Zod no app layer |
-| DB-007 | Falta constraints CHECK | 🟡 Médio | 3h | P3 | Adicionar para enums críticos |
-| DB-008 | Triggers sem log | 🟡 Médio | 3h | P3 | Adicionar RAISE NOTICE |
-| DB-009 | Naming inconsistente | 🟢 Baixo | 1.5h | P4 | Baixa prioridade |
-| DB-010 | Comentários faltando | 🟢 Baixo | 3h | P4 | Documentação melhor no schema |
+## 3. Respostas ao Architect
 
----
+**Q1: A função `get_singleton_organization_id` é um legado que deve ser removido para suporte total a multi-tenant?**
+**R:** Sim, absolutamente. Ela viola o princípio de isolamento. Devemos refatorar o código que a utiliza para exigir contexto de organização explícito (via subdomain ou user session).
 
-## Débitos Adicionados
+**Q2: Precisamos implementar particionamento para as tabelas `audit_logs` e `activities`?**
+**R:** `audit_logs`: Sim, recomendado planejar para quando passar de 1M linhas. `activities`: Não imediato, indexação correta (`organization_id`, `date`) deve segurar bem até 10M linhas.
 
-| ID | Débito | Severidade | Horas | Prioridade |
-|----|--------|------------|-------|------------|
-| DB-011 | Falta de backups automatizados fora Supabase | 🟡 Médio | 4h | P3 |
-| DB-012 | Sem testes de migrations | 🟡 Médio | 8h | P3 |
+## 4. Recomendações
 
----
-
-## Respostas ao Architect
-
-**Q1:** As policies RLS com `USING (true)` são intencionais?
-> **R:** Sim, para single-tenant. Porém, representa risco se o produto escalar para multi-tenant. Recomendo adicionar verificação de `organization_id` preventivamente.
-
-**Q2:** Existe job de cleanup para soft deletes?
-> **R:** Não detectei. Necessário implementar função `cleanup_soft_deleted()` + cron job via Supabase Edge Functions ou pg_cron.
-
-**Q3:** O schema consolidado é problema?
-> **R:** Sim. 80KB em uma única migration dificulta rollbacks parciais e code review. Recomendo quebrar em migrations por domínio.
-
----
-
-## Recomendações
-
-**Ordem de Resolução:**
-1. DB-002: Índices de busca (impacto imediato em performance)
-2. DB-001: Revisar RLS críticas (segurança)
-3. DB-004: Índices em FKs (performance)
-4. DB-003: Job de cleanup (manutenção)
-5. Demais em sprints subsequentes
-
----
-
-**Status:** FASE 5 - VALIDADO ✅
+1. **Imediato (Sprint Atual)**: Adicionar índices parciais de soft delete (`DB-03`).
+2. **Curto Prazo (Próxima Sprint)**: Automatizar geração de tipos TypeScript (`DB-01`) e sanear migrações em CI (`DB-05`).
+3. **Médio Prazo**: Remover `get_singleton_organization_id` (`DB-02`).

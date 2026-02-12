@@ -1,93 +1,55 @@
 # Technical Debt Assessment - DRAFT
 
-**Documento:** FASE 4 - Brownfield Discovery (Para Revisão)  
-**Projeto:** NossoCRM (zcrm-v1)  
-**Data:** 2026-02-09  
-**Status:** ⚠️ DRAFT - PENDENTE REVISÃO ESPECIALISTAS
+**Date**: 2026-02-11
+**Status**: Draft (Pending Specialist Review)
 
----
+## Para Revisão dos Especialistas
 
-## 1. Débitos de Sistema (@architect)
+### 1. Débitos de Sistema
+Identificados na análise de arquitetura (`docs/architecture/system-architecture.md`):
 
-| ID | Débito | Severidade | Esforço | Prioridade |
-|----|--------|------------|---------|------------|
-| SYS-001 | TypeScript strict: false | 🔴 Crítico | 8-16h | P1 |
-| SYS-002 | Dependências muito recentes | 🔴 Crítico | 2-4h | P2 |
-| SYS-003 | Estrutura mista app/features | 🟠 Alto | 4-8h | P2 |
-| SYS-004 | Baixa cobertura de testes | 🟠 Alto | 40-80h | P1 |
-| SYS-005 | Context overload (12 contexts) | 🟠 Alto | 8-16h | P2 |
-| SYS-006 | Documentação fragmentada | 🟡 Médio | 8-16h | P3 |
-| SYS-007 | Falta de barrel exports | 🟡 Médio | 4-8h | P3 |
-| SYS-008 | Design system não documentado | 🟡 Médio | 16-24h | P2 |
-| SYS-009 | Arquivos .DS_Store | 🟢 Baixo | 0.5h | P4 |
-| SYS-010 | Múltiplas configs de agentes | 🟢 Baixo | 2-4h | P4 |
+1. **Migrações em SQL Puro**: O uso de arquivos SQL puros em `supabase/migrations/` sem uma camada de abstração (ORM) pode levar a erros manuais e discrepâncias de tipo no client.
+2. **Ambiente de Testes**: A cobertura de testes (Vitest) precisa ser verificada e expandida, especialmente para integração.
+3. **Estrutura "features/"**: A organização em `features/` vs `app/` precisa de regras claras de encapsulamento para evitar acoplamento.
+4. **Dependências**: O projeto tem muitas dependências (`package.json`), o que pode impactar o tempo de build e a superfície de ataque.
+5. **Typescript Strictness**: Verificar se `tsconfig.json` está com `strict: true` e se há muitos `any` no código.
 
-⚠️ PENDENTE: Revisão do @architect
+### 2. Débitos de Database
+Identificados na auditoria (`supabase/docs/DB-AUDIT.md`):
 
----
+1. **Ausência de ORM**: Acesso direto via `supabase-js` requer manutenção manual de tipos (`database.types.ts`).
+2. **Single vs Multi-tenant**: A estrutura permite multi-tenant, mas funções como `get_singleton_organization_id` sugerem uso híbrido ou transição incompleta.
+3. **Índices de Soft Delete**: Necessário garantir que todas as queries filtrem `deleted_at IS NULL` e que existam índices parciais para isso.
+4. **JSONB Performance**: Uso extensivo de JSONB (`custom_fields`, IA context) sem índices GIN claros pode degradar performance com volume de dados.
 
-## 2. Débitos de Database (@data-engineer)
+⚠️ **PENDENTE**: Revisão do @data-engineer sobre performance real das queries e integridade referencial.
 
-| ID | Débito | Severidade | Esforço | Prioridade |
-|----|--------|------------|---------|------------|
-| DB-001 | RLS policies muito permissivas | 🔴 Crítico | 4-8h | P1 |
-| DB-002 | Falta de índices de busca | 🔴 Crítico | 2-4h | P1 |
-| DB-003 | Soft delete sem cleanup | 🟠 Alto | 4-8h | P2 |
-| DB-004 | FKs sem índice | 🟠 Alto | 2-4h | P2 |
-| DB-005 | Schema único consolidado (80KB) | 🟠 Alto | 8-16h | P3 |
-| DB-006 | JSONB sem validação | 🟡 Médio | 4-8h | P3 |
-| DB-007 | Falta de constraints CHECK | 🟡 Médio | 2-4h | P3 |
-| DB-008 | Triggers sem log de erro | 🟡 Médio | 2-4h | P3 |
-| DB-009 | Inconsistência naming | 🟢 Baixo | 1-2h | P4 |
-| DB-010 | Comentários faltando | 🟢 Baixo | 2-4h | P4 |
+### 3. Débitos de Frontend/UX
+Identificados na especificação (`docs/frontend/frontend-spec.md`):
 
-⚠️ PENDENTE: Revisão do @data-engineer
+1. **Acessibilidade (a11y)**: Embora `sr-only` e `focus-visible` existam, a conformidade WCAG 2.1 AA precisa de auditoria manual (cores, navegação por teclado).
+2. **Bundle Size**: `next.config.ts` usa `optimizePackageImports`, mas bibliotecas pesadas como `recharts` e `framer-motion` podem impactar o First Contentful Paint (FCP).
+3. **Consistência Visual**: Garantir que todos os componentes usem os tokens OKLCH do `globals.css` e não cores hardcoded.
+4. **Mobile Experience**: Verificar se o layout complexo (Kanban, Gráficos) se adapta bem a telas `xs` e `sm` sem quebra.
 
----
+⚠️ **PENDENTE**: Revisão do @ux-design-expert sobre usabilidade mobile e acessibilidade.
 
-## 3. Débitos de Frontend/UX (@ux-design-expert)
+### 4. Matriz Preliminar
 
-| ID | Débito | Severidade | Esforço | Prioridade |
-|----|--------|------------|---------|------------|
-| UX-001 | Design system não documentado | 🔴 Crítico | 16-24h | P1 |
-| UX-002 | Componentes sem Storybook | 🔴 Crítico | 8-16h | P2 |
-| UX-003 | FormField muito grande (13KB) | 🟠 Alto | 8-16h | P2 |
-| UX-004 | Inconsistência de naming | 🟠 Alto | 2-4h | P3 |
-| UX-005 | Poucos testes componentes (16%) | 🟠 Alto | 16-24h | P1 |
-| UX-006 | Contexts overload | 🟠 Alto | 8-16h | P2 |
-| UX-007 | Estilos mistos (CSS-in-JS+Tailwind) | 🟡 Médio | 2-4h | P3 |
-| UX-008 | Falta Loading Skeletons | 🟡 Médio | 4-8h | P3 |
-| UX-009 | Ausência Error Boundaries | 🟡 Médio | 4-8h | P2 |
-| UX-010 | Ícones hardcoded | 🟢 Baixo | 1-2h | P4 |
+| ID | Débito | Área | Impacto | Esforço | Prioridade |
+|----|--------|------|---------|---------|------------|
+| T-01 | Migrações SQL sem verificação CI | Backend | Alto (Quebra de prod) | Médio | Alta |
+| T-02 | Cobertura de Testes Baixa | QA | Médio (Regressão) | Alto | Média |
+| T-03 | Índices faltantes para Soft Delete | DB | Alto (Performance) | Baixo | Alta |
+| T-04 | Acessibilidade Incompleta | Frontend | Médio (Compliance) | Médio | Média |
+| T-05 | Ambiguidade Single/Multi-tenant | Arq | Alto (Segurança data leak) | Médio | Alta |
 
-⚠️ PENDENTE: Revisão do @ux-design-expert
+### 5. Perguntas para Especialistas
 
----
+**Para @data-engineer:**
+1. A função `get_singleton_organization_id` é um legado que deve ser removido para suporte total a multi-tenant?
+2. Precisamos implementar particionamento para as tabelas `audit_logs` e `activities`?
 
-## 4. Matriz Preliminar
-
-| Prioridade | Total | Horas Est. |
-|------------|-------|------------|
-| P1 (Crítico) | 6 | 72-136h |
-| P2 (Alto) | 10 | 60-116h |
-| P3 (Médio) | 10 | 42-84h |
-| P4 (Baixo) | 4 | 5.5-14h |
-| **TOTAL** | **30** | **179.5-350h** |
-
----
-
-## 5. Perguntas para Especialistas
-
-### Para @data-engineer:
-1. As policies RLS com `USING (true)` são intencionais para single-tenant?
-2. Existe job de cleanup para soft deletes?
-3. O schema consolidado de 80KB é um problema de manutenção?
-
-### Para @ux-design-expert:
-1. FormField de 13KB deve ser refatorado ou é intencional?
-2. Há padrão de loading states definido?
-3. A inconsistência de naming (PascalCase vs lowercase) é conhecida?
-
----
-
-**Status:** FASE 4 COMPLETA - AGUARDANDO REVISÃO ✅
+**Para @ux-design-expert:**
+1. Os componentes do Radix UI estão devidamente estilizados para Dark Mode com a paleta OKLCH?
+2. Como lidar com a visualização do Kanban em mobile (scroll horizontal ou stack vertical)?

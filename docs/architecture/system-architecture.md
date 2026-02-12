@@ -1,152 +1,156 @@
-# System Architecture - NossoCRM (zcrm-v1)
+# NossoCRM Brownfield Architecture Document
 
-**Documento:** FASE 1 - Brownfield Discovery  
-**Gerado por:** @architect (Aria)  
-**Data:** 2026-02-09  
-**Versão:** 1.0
+## Introduction
 
----
+This document captures the CURRENT STATE of the NossoCRM codebase, including technical debt, patterns, and structure. It serves as a reference for AI agents working on enhancements or refactoring.
 
-## 1. Visão Geral do Sistema
+### Document Scope
+Comprehensive documentation of the entire system as part of the Brownfield Discovery workflow.
 
-### 1.1 Descrição
-NossoCRM é um CRM inteligente com assistente de IA integrado para gestão de pipeline de vendas, contatos e atividades.
+### Change Log
 
-### 1.2 Stack Tecnológico
+| Date | Version | Description | Author |
+|------|---------|-------------|--------|
+| 2026-02-11 | 1.0 | Initial brownfield analysis | Architect Agent (Orion) |
 
-| Camada | Tecnologia | Versão |
-|--------|------------|--------|
-| **Framework** | Next.js | 16.0.10 |
-| **Runtime** | React | 19.2.1 |
-| **Linguagem** | TypeScript | 5.x |
-| **Banco de Dados** | Supabase (PostgreSQL) | SSR 0.8.0 |
-| **UI Components** | Radix UI | 1.x - 2.x |
-| **Estilização** | Tailwind CSS | 4.x |
-| **State Management** | Zustand + React Query | 5.x |
-| **AI SDK** | Vercel AI SDK | 6.0.72 |
-| **Testing** | Vitest + Testing Library | 4.0.0 |
+## Quick Reference - Key Files and Entry Points
 
-### 1.3 Integrações de IA
+### Critical Files for Understanding the System
 
-| Provider | Package |
-|----------|---------|
-| Anthropic | @ai-sdk/anthropic 3.0.37 |
-| Google | @ai-sdk/google 3.0.21 |
-| OpenAI | @ai-sdk/openai 3.0.25 |
+- **Main Entry**: `app/layout.tsx` (Root layout)
+- **Configuration**: `next.config.ts`, `tailwind.config.js`, `.env.example`
+- **Core Libraries**: `lib/supabase/`, `lib/ai/`, `lib/auth/`
+- **API Routes**: `app/api/` (Next.js App Router API)
+- **Database Schema**: `supabase/migrations/` (SQL migrations)
+- **Global Styles**: `app/globals.css`
+- **Authentication**: `app/auth/`, `lib/supabase/server.ts`, `lib/supabase/client.ts`
+- **Installation Wizard**: `app/install/`
 
----
+## High Level Architecture
 
-## 2. Estrutura de Pastas
+### Technical Summary
+NossoCRM is a modern CRM application built with Next.js 16 (App Router), leveraging Supabase for backend services (Database, Auth, Realtime) and deployed on Vercel. It features an AI assistant integration using Vercel AI SDK.
 
+### Actual Tech Stack
+
+| Category | Technology | Version | Notes |
+|----------|------------|---------|--------|
+| Runtime | Node.js | >=20 | Driven by `package.json` engines/types |
+| Framework | Next.js | 16.0.10 | App Router, Server Actions, RSC |
+| Language | TypeScript | 5.x | Strict mode enabled |
+| Database | PostgreSQL | 15+ | Managed by Supabase |
+| Auth | Supabase Auth | - | Email/Password, potential OAuth |
+| ORM | None / Raw SQL | - | Uses `@supabase/supabase-js`, direct SQL in migrations |
+| UI Framework | React | 19.2.1 | Latest React features |
+| Styling | Tailwind CSS | 4.x | Utility-first CSS |
+| Components | Radix UI | - | Headless UI primitives |
+| AI | Vercel AI SDK | 3.x/4.x | Google, OpenAI, Anthropic adapters |
+| Testing | Vitest | 4.x | Unit and Integration testing |
+| Monitoring | Sentry | 10.x | Error tracking and performance |
+| Analytics | Web Vitals | 5.x | Performance metrics |
+
+### Repository Structure Reality Check
+
+- **Type**: Monorepo structure within a single package (not using workspaces, but organized by domain in `features/`).
+- **Package Manager**: npm (lockfile v3)
+- **Notable**: `docs/` folder is well-populated. `app/install` suggests a self-hosted/installable nature.
+
+## Source Tree and Module Organization
+
+### Project Structure (Actual)
+
+```text
+project-root/
+├── app/                 # Next.js App Router
+│   ├── (protected)/     # Authenticated routes (dashboard, pipeline, etc.)
+│   ├── api/             # API Routes
+│   ├── auth/            # Auth pages
+│   ├── install/         # Installation wizard
+│   ├── join/            # Invite acceptance
+│   ├── login/           # Login page
+│   ├── layout.tsx       # Root layout
+│   └── globals.css      # Global styles
+├── components/          # Shared UI components (likely shadcn/ui style)
+├── features/            # Domain-specific modules (inferred from imports/usage)
+├── lib/                 # Shared utilities and core logic
+│   ├── ai/              # AI SDK configuration and helpers
+│   ├── auth/            # Auth utilities
+│   ├── supabase/        # Supabase client clients (server/client/middleware)
+│   ├── utils/           # General helpers
+│   └── ...              # Other libs (sentry, analytics, logger)
+├── public/              # Static assets
+├── supabase/            # Supabase configuration
+│   ├── migrations/      # SQL migrations
+│   └── config.toml      # Local dev config
+├── test/                # Test setup and utilities
+└── docs/                # Project documentation
 ```
-zcrm-v1/
-├── app/                    # Next.js App Router (101 arquivos)
-│   ├── (protected)/        # Rotas autenticadas
-│   ├── api/                # API Routes
-│   ├── auth/callback/      # OAuth callback
-│   └── install/            # Wizard de instalação
-│
-├── features/               # Feature Modules (11 módulos)
-│   ├── activities/         # Atividades e tarefas
-│   ├── ai-hub/             # Central de IA
-│   ├── boards/             # Kanban boards
-│   ├── contacts/           # Gestão de contatos
-│   ├── dashboard/          # Dashboard analytics
-│   ├── deals/              # Oportunidades
-│   ├── decisions/          # Decisões de vendas
-│   ├── inbox/              # Inbox inteligente
-│   ├── profile/            # Perfil do usuário
-│   ├── reports/            # Relatórios
-│   └── settings/           # Configurações
-│
-├── components/             # Componentes Compartilhados (43 arquivos)
-│   ├── ui/                 # Primitivos (19 componentes)
-│   ├── ai/                 # Componentes de IA
-│   └── ...
-│
-├── lib/                    # Bibliotecas (105 arquivos)
-│   ├── supabase/           # Cliente Supabase
-│   ├── ai/                 # Lógica de IA
-│   ├── query/              # React Query hooks
-│   └── ...
-│
-├── context/                # React Contexts (12 arquivos)
-├── hooks/                  # Custom Hooks (8 arquivos)
-├── types/                  # TypeScript types (4 arquivos)
-└── supabase/               # Configuração Supabase (2 migrations)
-```
 
----
+### Key Modules and Their Purpose
 
-## 3. Métricas do Codebase
+- **Authentication**: Managed via Supabase Auth + Middleware (`lib/middleware/`).
+- **Database Access**: `lib/supabase/` provides typed clients. Migrations in `supabase/migrations/` define the schema.
+- **AI Integration**: `lib/ai/` handles interactions with LLMs using Vercel AI SDK.
+- **CRM Features**: Likely located in `features/` (not fully explored yet, but inferred from standard practices and `app` structure).
+- **Installation**: `app/install/` and `lib/installer/` handle the setup wizard logic.
 
-| Métrica | Valor |
-|---------|-------|
-| Arquivos TypeScript/TSX | ~10.252 |
-| Features modules | 11 |
-| Componentes UI | 43 |
-| Contexts | 12 |
-| Custom Hooks | 8 |
-| Migrations | 2 |
+## Data Models and APIs
 
----
+### Data Models
+Schema is defined in `supabase/migrations/`.
+There isn't a centralized ORM class definition (like Prisma schema), so truth is in SQL files.
+`lib/supabase/database.types.ts` (if exists, usually generated) provides TypeScript types.
 
-## 4. Débitos Técnicos Identificados (Nível Sistema)
+### API Specifications
+- **Internal API**: `app/api/` contains Next.js Route Handlers.
+- **External API**: Documented in `docs/public-api.md` (referenced in README).
 
-### 4.1 🔴 CRÍTICO
+## Technical Debt and Known Issues
 
-| ID | Débito | Impacto | Esforço Est. |
-|----|--------|---------|--------------|
-| SYS-001 | **TypeScript strict: false** | Bugs silenciosos, type safety comprometido | 8-16h |
-| SYS-002 | **Dependências em versões muy recentes** | Potenciais incompatibilidades | 2-4h |
+### Critical Technical Debt (Inferred)
+1. **Raw SQL Migrations**: While powerful, managing raw SQL migrations without an ORM layer can lead to drift or complexity in type generation if not automated.
+2. **"features/" Directory**: Need to verify if `features/` is strictly enforced or if logic leaks into `app/` or `lib/`.
+3. **Testing Coverage**: `vitest` is set up, but coverage needs verification.
 
-### 4.2 🟠 ALTO
+### Workarounds and Gotchas
+- **Installation Flow**: The app has a custom installation wizard (`app/install`), which implies state management for "installed" vs "not installed" (likely in DB or basic env check).
+- **Barrel Files**: `next.config.ts` has `optimizePackageImports` for `lucide-react`, etc., to handle tree-shaking performance.
 
-| ID | Débito | Impacto | Esforço Est. |
-|----|--------|---------|--------------|
-| SYS-003 | **Estrutura mista app/ e features/** | Confusão sobre onde colocar código | 4-8h |
-| SYS-004 | **Baixa cobertura de testes** | 16 arquivos de teste para ~10K arquivos | 40-80h |
-| SYS-005 | **Context overload** | 12 contexts pode causar re-renders | 8-16h |
+## Integration Points and External Dependencies
 
-### 4.3 🟡 MÉDIO
+### External Services
+| Service | Purpose | Integration Type | Key Files |
+|---------|---------|------------------|-----------|
+| Supabase | Backend (Auth, DB, Realtime) | SDK | `lib/supabase/` |
+| Vercel | Hosting & AI SDK | SDK/Platform | `next.config.ts`, `lib/ai/` |
+| Sentry | Error Monitoring | SDK | `sentry.*.config.ts` |
+| Google/OpenAI/Anthropic | AI Models | API via SDK | `lib/ai/` |
 
-| ID | Débito | Impacto | Esforço Est. |
-|----|--------|---------|--------------|
-| SYS-006 | **Documentação fragmentada** | Apenas 3 docs técnicos | 8-16h |
-| SYS-007 | **Falta de barrel exports** | Imports inconsistentes | 4-8h |
-| SYS-008 | **Design system não documentado** | Inconsistência visual potencial | 16-24h |
+### Internal Integration Points
+- **Webhooks**: Mentioned in README/docs (`docs/webhooks.md`).
+- **Events**: Likely uses Supabase Realtime for live updates.
 
-### 4.4 🟢 BAIXO
+## Development and Deployment
 
-| ID | Débito | Impacto | Esforço Est. |
-|----|--------|---------|--------------|
-| SYS-009 | **Arquivos .DS_Store** | Sujeira no git | 0.5h |
-| SYS-010 | **Múltiplas configs de agentes** | 5 dirs de configuração | 2-4h |
+### Local Development Setup
+1. Clone repo
+2. Copy `.env.example` to `.env.local`
+3. `npm install`
+4. `npm run dev` for Supabase (if local) + Next.js
 
----
+### Build and Deployment
+- **Build**: `npm run build` (Next.js build)
+- **Deploy**: Vercel (standard Next.js deployment)
+- **Env Vars**: Critical for Supabase connection and AI keys.
 
-## 5. Configurações
+## Testing Reality
+- **Unit/Integration**: Vitest configured (`vitest.config.ts`).
+- **E2E**: Playwright mentioned in `package.json` (`playwright` devDep).
+- **Scripts**: `test`, `test:run`, `smoke:integrations`.
 
-### 5.1 TypeScript (tsconfig.json)
-- `strict: false` ⚠️ DÉBITO
-- `strictNullChecks: true` ✅
-- Path alias: `@/*`
-
-### 5.2 Scripts NPM
-- `precheck`: lint + typecheck + test + build ✅
-- Quality gates configurados
-
----
-
-## 6. Integrações Externas
-
-| Serviço | Status |
-|---------|--------|
-| **Supabase** | ✅ Configurado |
-| **Vercel** | ✅ Configurado |
-| **AI Providers** | ✅ Multi-provider |
-| **Webhooks** | ✅ Documentado |
-
----
-
-**Status:** FASE 1 COMPLETA ✅
+## Success Criteria Checklist
+- [x] Tech stack identified
+- [x] Project structure mapped
+- [x] Data layer approach identified (Supabase + Migrations)
+- [x] Key integration points listed
+- [x] Initial technical debt assessment

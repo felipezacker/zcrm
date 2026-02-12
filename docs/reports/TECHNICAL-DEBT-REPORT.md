@@ -1,7 +1,6 @@
 # 📊 Relatório de Débito Técnico
-
-**Projeto:** NossoCRM (zcrm-v1)  
-**Data:** 2026-02-09  
+**Projeto:** NossoCRM
+**Data:** 11/02/2026
 **Versão:** 1.0
 
 ---
@@ -9,133 +8,85 @@
 ## 🎯 Executive Summary
 
 ### Situação Atual
-
-O NossoCRM é um CRM inteligente construído com tecnologias modernas (Next.js 16, React 19, Supabase). O sistema está funcional e em produção, porém acumulou **35 débitos técnicos** durante o desenvolvimento acelerado.
-
-Os débitos identificados impactam **segurança**, **performance** e **manutenibilidade**. O TypeScript opera em modo não-estrito, políticas de segurança do banco são permissivas, e a cobertura de testes é de apenas 16%.
-
-A boa notícia: nenhum débito é bloqueante imediato. Todos podem ser resolvidos de forma gradual, sem parar o desenvolvimento de features.
+O NossoCRM possui uma base técnica moderna (Next.js 16, Supabase), mas carrega decisões arquiteturais iniciais que limitam sua escala e segurança. A estrutura híbrida de "single-tenant" em um schema "multi-tenant" cria riscos de segurança, e a falta de automação em testes e banco de dados aumenta a fragilidade do desenvolvimento. No frontend, a experiência móvel e acessibilidade precisam de atenção para garantir uso profissional em campo.
 
 ### Números Chave
-
 | Métrica | Valor |
 |---------|-------|
-| Total de Débitos | 35 |
-| Débitos Críticos | 6 |
-| Débitos Altos | 13 |
-| Esforço Total | 337 horas |
-| Custo Estimado | R$ 50.550 |
+| Total de Débitos | 9 |
+| Débitos Críticos | 4 |
+| Esforço Total | ~130 horas |
+| Custo Estimado | R$ 19.500 (@ R$150/h) |
 
 ### Recomendação
-
-**Iniciar resolução imediata das Quick Wins (35h/R$5.250)** que terão impacto imediato em segurança e performance, seguido de sprint focado em fundação técnica.
+Recomendamos um **sprint de estabilização de 2 semanas** focado em segurança (DB, CI) e uma refatoração progressiva da experiência móvel ao longo do próximo mês, paralelamente ao desenvolvimento de features.
 
 ---
 
 ## 💰 Análise de Custos
 
 ### Custo de RESOLVER
-
 | Categoria | Horas | Custo (R$150/h) |
 |-----------|-------|-----------------|
-| Sistema | 132h | R$ 19.800 |
-| Database | 58h | R$ 8.700 |
-| Frontend/UX | 103h | R$ 15.450 |
-| Buffer (15%) | 44h | R$ 6.600 |
-| **TOTAL** | **337h** | **R$ 50.550** |
+| Sistema (CI/Testes) | 72 | R$ 10.800 |
+| Database (Segurança) | 60 | R$ 9.000 |
+| Frontend (UX/Mobile) | 60 | R$ 9.000 |
+| **TOTAL** | **192*** | **R$ 28.800** |
+*(Inclui margem de segurança de 30% sobre estimativa técnica)*
 
 ### Custo de NÃO RESOLVER (Risco Acumulado)
+| Risco | Probabilidade | Impacto | Custo Potencial |
+|-------|---------------|---------|-----------------|
+| Vazamento de Dados (Multi-tenant) | Média | Crítico | > R$ 100.000 (Legal/Reputação) |
+| Regressão em Produção (Sem CI) | Alta | Alto | R$ 15.000 (Downtime/Fix) |
+| Perda de Vendas (Mobile Ruim) | Alta | Médio | Incalculável (Churn) |
 
-| Risco | Prob. | Impacto | Custo Potencial |
-|-------|-------|---------|-----------------|
-| Vulnerabilidade segurança (RLS) | Alta | Crítico | R$ 150.000+ |
-| Performance degradada | Média | Alto | R$ 30.000/ano |
-| Bugs em produção | Alta | Médio | R$ 20.000/ano |
-| Churn devs (código difícil) | Média | Alto | R$ 50.000/ano |
-| **POTENCIAL TOTAL** | - | - | **R$ 250.000+** |
+**Custo potencial de não agir supera largamente o investimento de resolução.**
 
 ---
 
 ## 📈 Impacto no Negócio
 
-### Performance
-- **Situação atual:** Queries sem índices podem demorar 500ms+
-- **Meta pós-resolução:** Queries < 100ms
-- **Impacto:** +20% satisfação de usuário estimada
-
 ### Segurança
-- **Vulnerabilidades identificadas:** 2 críticas (RLS)
-- **Risco de compliance:** Médio
-- **Impacto:** Proteção de dados de usuários
+- **Risco**: Dados de um cliente vazarem para outro devido à lógica híbrida.
+- **Solução**: Refatoração para Multi-tenant estrito (P0).
 
-### Experiência do Usuário
-- **Problemas de UX:** 13
-- **Taxa de erro potencial:** Alta (sem Error Boundaries)
-- **Impacto:** Redução de churn, melhor NPS
+### Experiência do Usuário (Vendedores)
+- **Problema**: Pipeline de vendas inutilizável no celular.
+- **Solução**: Layout adaptativo para mobile (P1). impacta diretamente a produtividade em campo.
 
-### Manutenibilidade
-- **Tempo atual para novo feature:** Estimado 3-4 dias
-- **Após resolução:** Estimado 1-2 dias
-- **Impacto:** +50% velocidade de entrega
+### Velocidade de Desenvolvimento
+- **Problema**: Desenvolvedores gastam tempo corrigindo tipos manuais e bugs de migração.
+- **Solução**: Automação de Types e CI de Banco (P1). Aumenta velocity em ~20%.
 
 ---
 
 ## ⏱️ Timeline Recomendado
 
-### Fase 1: Quick Wins (1-2 semanas)
-- Índices de performance
-- Error Boundaries
-- Loading Skeletons
-- Limpeza básica
-- **Custo:** R$ 5.250
-- **ROI:** Imediato
+### Fase 1: Segurança e Fundação (2 semanas)
+- [T-01] CI para Migrações
+- [DB-02] Correção Multi-tenant
+- [DB-03] Performance básica
+- **Custo**: ~R$ 6.600
 
-### Fase 2: Fundação (2-4 semanas)
-- TypeScript strict mode
-- Segurança RLS
-- Design system
-- Testes críticos
-- **Custo:** R$ 15.150
-- **ROI:** Habilita features futuras
+### Fase 2: Experiência Móvel e Developer Experience (2 semanas)
+- [FE-04] Mobile Layout
+- [DB-01] Automação de Types
+- **Custo**: ~R$ 9.000
 
-### Fase 3: Otimização (4-6 semanas)
-- Storybook
-- Documentação completa
-- Débitos restantes
-- **Custo:** R$ 23.550
-- **ROI:** Melhoria contínua
-
----
-
-## 📊 ROI da Resolução
-
-| Investimento | Retorno Esperado |
-|--------------|------------------|
-| R$ 50.550 (resolução) | R$ 250.000+ (riscos evitados) |
-| 337 horas | +50% velocidade de dev |
-| 6-8 semanas | Produto sustentável |
-
-**ROI Estimado: 5:1**
+### Fase 3: Qualidade Contínua (Ongoing)
+- Testes, Acessibilidade e Dark Mode
+- Diluído nas features normais.
 
 ---
 
 ## ✅ Próximos Passos
 
-1. [ ] Aprovar orçamento de R$ 50.550
-2. [ ] Definir sprint de resolução
-3. [ ] Alocar time técnico
-4. [ ] Iniciar Fase 1 (Quick Wins)
+1. [ ] Aprovar orçamento para Fase 1 (R$ 6.600)
+2. [ ] Alocar 1 Desenvolvedor Fullstack Sênior por 1 mês
+3. [ ] Iniciar setup do CI/CD de Banco imediatamente
 
 ---
 
 ## 📎 Anexos
-
-- [Assessment Técnico Completo](./prd/technical-debt-assessment.md)
-- [Arquitetura do Sistema](./architecture/system-architecture.md)
-- [Schema do Banco](../supabase/docs/SCHEMA.md)
-- [Audit do Banco](../supabase/docs/DB-AUDIT.md)
-- [Spec Frontend](./frontend/frontend-spec.md)
-
----
-
-*Relatório gerado por @analyst como parte do Brownfield Discovery Workflow*
+- [Assessment Técnico Completo](./../prd/technical-debt-assessment.md)

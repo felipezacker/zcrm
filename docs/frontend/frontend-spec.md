@@ -1,196 +1,106 @@
-# Frontend Specification - NossoCRM
+# NossoCRM UI/UX Specification
 
-**Documento:** FASE 3 - Brownfield Discovery  
-**Gerado por:** @ux-design-expert (Uma)  
-**Data:** 2026-02-09  
-**Versão:** 1.0
+**Version**: 2.0
+**Date**: 2026-02-11
+**Status**: Draft
 
----
+## Introduction
 
-## 1. Stack Frontend
+This document defines the user experience goals, information architecture, user flows, and visual design specifications for NossoCRM. It reflects the current state of the application's frontend architecture and design system.
 
-| Tecnologia | Versão | Uso |
-|------------|--------|-----|
-| **Next.js** | 16.0.10 | App Router, SSR |
-| **React** | 19.2.1 | UI Runtime |
-| **TypeScript** | 5.x | Type safety |
-| **Tailwind CSS** | 4.x | Estilização |
-| **Radix UI** | 1.x-2.x | Primitivos acessíveis |
-| **Framer Motion** | 12.x | Animações |
-| **Zustand** | 5.x | State management |
-| **React Query** | 5.x | Data fetching |
-| **Recharts** | 3.x | Gráficos |
-| **Lucide React** | 0.560.0 | Ícones |
+## Overall UX Goals & Principles
 
----
+### Target User Personas
+1. **Sales Representative**: Focused on speed, pipeline visibility, and quick actions. Needs mobile access and efficient data entry.
+2. **Sales Manager**: Focused on team performance, analytics, and process oversight. Needs dashboards and reporting.
+3. **Administrator**: Manages system configuration, users, and integrations.
 
-## 2. Componentes UI (19 componentes)
+### Design Principles
+1. **Efficiency First**: Reduce clicks for common actions (logging calls, moving deals).
+2. **Clarity**: Use clear visual hierarchy and distinct status colors.
+3. **AI-Augmented**: AI features should be context-aware and helpful, not intrusive.
+4. **Accessible**: Support keyboard navigation and screen readers (WCAG 2.1 AA target).
 
-### 2.1 Primitivos Base (Radix-based)
+## Information Architecture
 
-| Componente | Arquivo | Tamanho |
-|------------|---------|---------|
-| `Button` | button.tsx | 2KB |
-| `Card` | card.tsx | 2KB |
-| `Badge` | badge.tsx | 1.4KB |
-| `Avatar` | avatar.tsx | 1.5KB |
-| `Tabs` | tabs.tsx | 2KB |
-| `Popover` | popover.tsx | 1.4KB |
-| `Tooltip` | tooltip.tsx | 1.2KB |
-| `Alert` | alert.tsx | 1.7KB |
+### Navigation Structure
+- **Sidebar (Desktop) / Bottom Nav (Mobile)**:
+    - **Dashboard**: Overview of metrics.
+    - **Pipeline**: Kanban board for deals.
+    - **Contacts**: List of contacts and companies.
+    - **Activities**: Task and calendar view.
+    - **Inbox**: AI-curated priorities.
+    - **Settings**: User and organization config.
 
-### 2.2 Componentes Compostos
+### Key Flows
+- **Deal Management**: Create Deal -> Move through Stages -> Close (Won/Lost).
+- **Contact Management**: Import/Create Contact -> Log Activity -> Schedule Next Step.
+- **AI Assistance**: Ask question -> Receive Insight -> Action Item.
 
-| Componente | Arquivo | Tamanho |
-|------------|---------|---------|
-| `Modal` | Modal.tsx | 4.7KB |
-| `Sheet` | Sheet.tsx | 2.6KB |
-| `ActionSheet` | ActionSheet.tsx | 4.3KB |
-| `FullscreenSheet` | FullscreenSheet.tsx | 1.7KB |
-| `FormField` | FormField.tsx | 13.7KB |
-| `ContactSearchCombobox` | ContactSearchCombobox.tsx | 8.5KB |
-| `AudioPlayer` | AudioPlayer.tsx | 7.1KB |
-| `LossReasonModal` | LossReasonModal.tsx | 8.2KB |
+## Visual Design & Design System
 
-### 2.3 Componentes com Testes ✅
+### Technology Stack
+- **Framework**: Next.js 16 (App Router)
+- **Styling**: Tailwind CSS v4 (using CSS variables and `@theme`)
+- **Icons**: Lucide React
+- **Components**: Radix UI primitives (likely shadcn/ui base)
 
-- `Modal.test.tsx` ✅
-- `FormField.test.tsx` ✅
-- `ConfirmModal.test.tsx` ✅
+### Color Palette (OKLCH)
+The system uses the OKLCH color space for better perceptual uniformity.
 
----
+| Color | Variable | Description |
+|-------|----------|-------------|
+| **Primary** | `--color-primary-*` | Brand Blue (#0ea5e9 range) |
+| **Surface** | `--color-surface` | Card backgrounds |
+| **Background** | `--color-bg` | App background |
+| **Success** | `--color-success` | Green (Deal Won) |
+| **Warning** | `--color-warning` | Yellow (Stalled Deal) |
+| **Error** | `--color-error` | Red (Deal Lost/Error) |
+| **Dark Mode** | `.dark` | Deep Slate background |
 
-## 3. Design System
+### Typography
+- **Sans (Body/UI)**: Inter (`--font-sans`)
+- **Display (Headings)**: Space Grotesk (`--font-display`)
+- **Serif (Accents)**: Cinzel (`--font-serif`)
 
-### 3.1 Cores (Tailwind Config)
+### Layout & Spacing
+- **Sidebar**: Collapsible, responsive.
+- **Grid**: 12-column grid system implicit in Tailwind.
+- **Safe Areas**: Handles mobile notches via `--app-safe-area-*`.
 
-```javascript
-colors: {
-  primary: {
-    50: '#f0f9ff',   // Lightest
-    500: '#0ea5e9',  // Main
-    900: '#0c4a6e',  // Darkest
-  },
-  dark: {
-    bg: '#020617',     // Background
-    card: '#0f172a',   // Cards
-    border: '#1e293b', // Borders
-    hover: '#334155',  // Hover states
-  }
-}
-```
+## Components
 
-### 3.2 Tipografia
+### Core Components (`components/ui`)
+- **Buttons**: Primary, Secondary, Ghost, Destructive.
+- **Inputs**: Text, Select, DatePicker, Combobox.
+- **Feedback**: Toasts, Modals (`ConfirmModal`, `OnboardingModal`).
+- **Data Display**: Tables (likely `tanstack/react-table`), Cards (`cv-card` optimized).
 
-| Uso | Fonte |
-|-----|-------|
-| Body | Inter (var) |
-| Display | Space Grotesk |
-| Serif/Accent | Cinzel |
+### AI Components (`components/ai`)
+- **Chat Interface**: Floating or sidebar panel.
+- **Suggestion Cards**: In-context insights.
 
-### 3.3 Dark Mode
+## Accessibility Requirements
+- **Focus States**: High visibility rings (`.focus-visible-ring`).
+- **Screen Readers**: `sr-only` utilities used.
+- **Contrast**: Compliant color pairs defined in CSS variables.
+- **Keyboard**: Full navigation support via Radix UI primitives.
 
-- **Status:** ✅ Habilitado
-- **Implementação:** `class` strategy
-- **ThemeContext:** Gerenciamento de tema
+## Responsiveness
+- **Mobile First**: Design targets generic mobile (`xs`, `sm`) up to desktop (`2xl`).
+- **Breakpoints**: 
+    - `sm`: 640px
+    - `md`: 768px
+    - `lg`: 1024px
+    - `xl`: 1280px
+    - `2xl`: 1536px
 
----
+## Performance Considerations
+- **CSS**: Tailwind v4 for zero-runtime CSS.
+- **Rendering**: `content-visibility: auto` (`.cv-auto`) used for long lists/tables.
+- **Fonts**: Variable fonts to reduce requests.
 
-## 4. Features Modules (11)
-
-| Módulo | Propósito | Componentes |
-|--------|-----------|-------------|
-| `activities` | Tarefas/Reuniões | 10 arquivos |
-| `ai-hub` | Central de IA | 3 arquivos |
-| `boards` | Kanban | 23 arquivos |
-| `contacts` | Gestão de contatos | 14 arquivos |
-| `dashboard` | Analytics | 5 arquivos |
-| `deals` | Oportunidades | 2 arquivos |
-| `decisions` | Decisões IA | 8 arquivos |
-| `inbox` | Inbox inteligente | 21 arquivos |
-| `profile` | Perfil | 1 arquivo |
-| `reports` | Relatórios | 2 arquivos |
-| `settings` | Configurações | 17 arquivos |
-
----
-
-## 5. Débitos Técnicos (Frontend/UX)
-
-### 5.1 🔴 CRÍTICO
-
-| ID | Débito | Impacto UX | Esforço |
-|----|--------|------------|---------|
-| UX-001 | **Design system não documentado** | Inconsistência visual, onboarding lento | 16-24h |
-| UX-002 | **Componentes sem Storybook** | Difícil testar variações | 8-16h |
-
-### 5.2 🟠 ALTO
-
-| ID | Débito | Impacto UX | Esforço |
-|----|--------|------------|---------|
-| UX-003 | **FormField muito grande (13KB)** | Difícil manutenção, muitas responsabilidades | 8-16h |
-| UX-004 | **Inconsistência de naming** | button.tsx vs Button.tsx vs ActionSheet.tsx | 2-4h |
-| UX-005 | **Poucos testes de componentes** | Apenas 3 de 19 testados (16%) | 16-24h |
-| UX-006 | **Contexts overload** | 12 contexts no diretório context/ | 8-16h |
-
-### 5.3 🟡 MÉDIO
-
-| ID | Débito | Impacto UX | Esforço |
-|----|--------|------------|---------|
-| UX-007 | **modalStyles.ts separado** | Estilos mistos (CSS-in-JS + Tailwind) | 2-4h |
-| UX-008 | **Falta de Loading Skeletons** | UX de loading pode melhorar | 4-8h |
-| UX-009 | **Ausência de Error Boundaries** | Erros podem quebrar a UI inteira | 4-8h |
-
-### 5.4 🟢 BAIXO
-
-| ID | Débito | Impacto UX | Esforço |
-|----|--------|------------|---------|
-| UX-010 | **Ícones hardcoded como strings** | `icon: 'MessageSquare'` em quick_scripts | 1-2h |
-
----
-
-## 6. Acessibilidade (a11y)
-
-| Aspecto | Status |
-|---------|--------|
-| Lib dedicada | ✅ `lib/a11y/` (14 arquivos) |
-| Radix UI | ✅ Primitivos acessíveis |
-| Focus Trap | ✅ focus-trap-react instalado |
-| ARIA labels | ⚠️ Verificar cobertura |
-| Keyboard nav | ⚠️ Verificar cobertura |
-
----
-
-## 7. Performance Frontend
-
-| Aspecto | Status |
-|---------|--------|
-| SSR/SSG | ✅ Next.js App Router |
-| Code splitting | ✅ Automático |
-| Image optimization | ✅ next/image |
-| Bundle analysis | ⚠️ Não detectado |
-| Lazy loading | ⚠️ Verificar uso |
-
----
-
-## 8. Responsividade
-
-| Aspecto | Status |
-|---------|--------|
-| Mobile first | ⚠️ Verificar |
-| Breakpoints | ✅ Tailwind defaults |
-| PWA | ✅ `components/pwa/` (3 arquivos) |
-
----
-
-## 9. Recomendações Prioritárias
-
-1. **[CRÍTICO]** Documentar design system (colors, tokens, components)
-2. **[ALTO]** Implementar Storybook para componentes
-3. **[ALTO]** Refatorar FormField em componentes menores
-4. **[ALTO]** Aumentar cobertura de testes de componentes
-5. **[MÉDIO]** Adicionar Loading Skeletons e Error Boundaries
-6. **[MÉDIO]** Padronizar naming (PascalCase para todos)
-
----
-
-**Status:** FASE 3 - FRONTEND SPEC COMPLETA ✅
+## References
+- Design Tokens: `app/globals.css`
+- Component Library: `components/`
+- Layout Logic: `components/Layout.tsx`
